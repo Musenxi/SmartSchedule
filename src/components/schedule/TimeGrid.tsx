@@ -25,8 +25,8 @@ export function TimeGrid({ periods, periodHeight, showPeriodTime }: TimeGridProp
                     <span className="font-medium text-foreground">{period.number}</span>
                     {showPeriodTime && (
                         <>
-                            <span className="text-[10px] opacity-70">{period.startTime}</span>
-                            <span className="text-[10px] opacity-70">{period.endTime}</span>
+                            <span className="text-[10px] opacity-70 tabular-nums">{period.startTime}</span>
+                            <span className="text-[10px] opacity-70 tabular-nums">{period.endTime}</span>
                         </>
                     )}
                 </div>

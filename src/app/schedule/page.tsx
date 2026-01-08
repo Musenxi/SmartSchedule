@@ -218,6 +218,8 @@ export default function SchedulePage() {
               periodHeight={settings.periodHeight}
               courseCornerRadius={settings.courseCornerRadius}
               onCourseClick={(course) => console.log('点击课程:', course.name)}
+              onSwipeLeft={() => setCurrentWeek(w => Math.min(schedule.totalWeeks, w + 1))}
+              onSwipeRight={() => setCurrentWeek(w => Math.max(1, w - 1))}
             />
           </div>
         </div>

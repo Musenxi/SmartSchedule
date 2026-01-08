@@ -78,7 +78,7 @@ export function ScheduleToolbar({
                         {formatDate(today, 'yyyy/M/d')}
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                        第{currentWeek}周 · {scheduleName}
+                        {scheduleName}
                     </p>
                 </div>
             </div>
@@ -98,167 +98,165 @@ export function ScheduleToolbar({
                     <ChevronLeft className="w-5 h-5" />
                 </button>
 
-                {isCurrentRealWeek ? (
-                    <div className="relative" ref={pickerRef}>
-                        <button
-                            onClick={() => setShowPicker(!showPicker)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border text-foreground"
-                        >
-                            <CalendarDays className="w-4 h-4" />
-                            本周
-                        </button>
+                <div className="relative" ref={pickerRef}>
+                    <button
+                        onClick={() => setShowPicker(!showPicker)}
+                        className={cn(
+                            "flex items-center justify-center gap-1 w-[96px] py-1.5 text-sm font-medium rounded-lg transition-colors border border-transparent",
+                            "hover:bg-muted hover:border-border text-foreground",
+                            !isCurrentRealWeek && "text-primary"
+                        )}
+                    >
+                        <CalendarDays className="w-4 h-4 flex-shrink-0" />
+                        <span className="flex items-center">
+                            第
+                            <span className="w-[1.2rem] text-center inline-block">{currentWeek}</span>
+                            周
+                        </span>
+                    </button>
 
-                        {/* 选择器下拉菜单 */}
-                        {showPicker && (
-                            <div className="absolute top-full right-0 mt-2 z-50 bg-card border border-border rounded-xl shadow-lg p-3 min-w-[280px] animate-in fade-in zoom-in-95 duration-150">
-                                {/* 模式切换标签 */}
-                                <div className="flex mb-3 bg-muted/50 rounded-lg p-1">
-                                    <button
-                                        onClick={() => setPickerMode('week')}
-                                        className={cn(
-                                            "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-md transition-all",
-                                            pickerMode === 'week'
-                                                ? "bg-background text-foreground shadow-sm"
-                                                : "text-muted-foreground hover:text-foreground"
-                                        )}
-                                    >
-                                        <Hash className="w-3.5 h-3.5" />
-                                        按周选择
-                                    </button>
-                                    <button
-                                        onClick={() => setPickerMode('date')}
-                                        className={cn(
-                                            "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-md transition-all",
-                                            pickerMode === 'date'
-                                                ? "bg-background text-foreground shadow-sm"
-                                                : "text-muted-foreground hover:text-foreground"
-                                        )}
-                                    >
-                                        <Calendar className="w-3.5 h-3.5" />
-                                        按日期选择
-                                    </button>
-                                </div>
+                    {/* 选择器下拉菜单 */}
+                    {showPicker && (
+                        <div className="absolute top-full right-0 mt-2 z-50 bg-card border border-border rounded-xl shadow-lg p-3 min-w-[280px] animate-in fade-in zoom-in-95 duration-150">
+                            {/* 模式切换标签 */}
+                            <div className="flex mb-3 bg-muted/50 rounded-lg p-1">
+                                <button
+                                    onClick={() => setPickerMode('week')}
+                                    className={cn(
+                                        "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-md transition-all",
+                                        pickerMode === 'week'
+                                            ? "bg-background text-foreground shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    <Hash className="w-3.5 h-3.5" />
+                                    按周选择
+                                </button>
+                                <button
+                                    onClick={() => setPickerMode('date')}
+                                    className={cn(
+                                        "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-md transition-all",
+                                        pickerMode === 'date'
+                                            ? "bg-background text-foreground shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    <Calendar className="w-3.5 h-3.5" />
+                                    按日期选择
+                                </button>
+                            </div>
 
-                                {/* 周选择模式 */}
-                                {pickerMode === 'week' && (
-                                    <>
-                                        <div className="grid grid-cols-5 gap-1.5">
-                                            {Array.from({ length: totalWeeks }, (_, i) => i + 1).map((week) => (
+                            {/* 周选择模式 */}
+                            {pickerMode === 'week' && (
+                                <>
+                                    <div className="grid grid-cols-5 gap-1.5">
+                                        {Array.from({ length: totalWeeks }, (_, i) => i + 1).map((week) => (
+                                            <button
+                                                key={week}
+                                                onClick={() => {
+                                                    onGoToWeek(week);
+                                                    setShowPicker(false);
+                                                }}
+                                                className={cn(
+                                                    "w-full aspect-square rounded-lg text-sm font-medium transition-all",
+                                                    week === currentWeek
+                                                        ? "bg-primary text-primary-foreground shadow-sm"
+                                                        : week === realCurrentWeek
+                                                            ? "bg-primary/20 text-primary hover:bg-primary/30"
+                                                            : "hover:bg-muted text-foreground"
+                                                )}
+                                            >
+                                                {week}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="mt-2 pt-2 border-t border-border">
+                                        <button
+                                            onClick={() => {
+                                                onGoToWeek(realCurrentWeek);
+                                                setShowPicker(false);
+                                            }}
+                                            className="w-full py-1.5 text-xs text-primary hover:bg-primary/10 rounded-lg transition-colors font-medium"
+                                        >
+                                            回到本周 (第{realCurrentWeek}周)
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* 日期选择模式 */}
+                            {pickerMode === 'date' && (
+                                <>
+                                    {/* 月份导航 */}
+                                    <div className="flex items-center justify-between mb-2">
+                                        <button
+                                            onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1))}
+                                            className="p-1 hover:bg-muted rounded-md transition-colors"
+                                        >
+                                            <ChevronLeft className="w-4 h-4" />
+                                        </button>
+                                        <span className="text-sm font-medium">
+                                            {format(selectedMonth, 'yyyy年M月', { locale: zhCN })}
+                                        </span>
+                                        <button
+                                            onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1))}
+                                            className="p-1 hover:bg-muted rounded-md transition-colors"
+                                        >
+                                            <ChevronRight className="w-4 h-4" />
+                                        </button>
+                                    </div>
+
+                                    {/* 星期标题 */}
+                                    <div className="grid grid-cols-7 gap-1 mb-1">
+                                        {['一', '二', '三', '四', '五', '六', '日'].map((day) => (
+                                            <div key={day} className="text-center text-xs text-muted-foreground py-1">
+                                                {day}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* 日期网格 */}
+                                    <div className="grid grid-cols-7 gap-1">
+                                        {calendarDays.map((day, index) => {
+                                            const isCurrentMonth = day.getMonth() === selectedMonth.getMonth();
+                                            const isToday = day.toDateString() === today.toDateString();
+
+                                            return (
                                                 <button
-                                                    key={week}
+                                                    key={index}
                                                     onClick={() => {
-                                                        onGoToWeek(week);
+                                                        onDateSelect(day);
                                                         setShowPicker(false);
                                                     }}
                                                     className={cn(
-                                                        "w-full aspect-square rounded-lg text-sm font-medium transition-all",
-                                                        week === currentWeek
-                                                            ? "bg-primary text-primary-foreground shadow-sm"
-                                                            : week === realCurrentWeek
-                                                                ? "bg-primary/20 text-primary hover:bg-primary/30"
-                                                                : "hover:bg-muted text-foreground"
+                                                        "w-full aspect-square rounded-lg text-xs font-medium transition-all flex items-center justify-center",
+                                                        !isCurrentMonth && "text-muted-foreground/40",
+                                                        isCurrentMonth && "text-foreground hover:bg-muted",
+                                                        isToday && "bg-primary text-primary-foreground hover:bg-primary/90"
                                                     )}
                                                 >
-                                                    {week}
+                                                    {day.getDate()}
                                                 </button>
-                                            ))}
-                                        </div>
-                                        <div className="mt-2 pt-2 border-t border-border">
-                                            <button
-                                                onClick={() => {
-                                                    onGoToWeek(realCurrentWeek);
-                                                    setShowPicker(false);
-                                                }}
-                                                className="w-full py-1.5 text-xs text-primary hover:bg-primary/10 rounded-lg transition-colors font-medium"
-                                            >
-                                                回到本周 (第{realCurrentWeek}周)
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
+                                            );
+                                        })}
+                                    </div>
 
-                                {/* 日期选择模式 */}
-                                {pickerMode === 'date' && (
-                                    <>
-                                        {/* 月份导航 */}
-                                        <div className="flex items-center justify-between mb-2">
-                                            <button
-                                                onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1))}
-                                                className="p-1 hover:bg-muted rounded-md transition-colors"
-                                            >
-                                                <ChevronLeft className="w-4 h-4" />
-                                            </button>
-                                            <span className="text-sm font-medium">
-                                                {format(selectedMonth, 'yyyy年M月', { locale: zhCN })}
-                                            </span>
-                                            <button
-                                                onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1))}
-                                                className="p-1 hover:bg-muted rounded-md transition-colors"
-                                            >
-                                                <ChevronRight className="w-4 h-4" />
-                                            </button>
-                                        </div>
-
-                                        {/* 星期标题 */}
-                                        <div className="grid grid-cols-7 gap-1 mb-1">
-                                            {['一', '二', '三', '四', '五', '六', '日'].map((day) => (
-                                                <div key={day} className="text-center text-xs text-muted-foreground py-1">
-                                                    {day}
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        {/* 日期网格 */}
-                                        <div className="grid grid-cols-7 gap-1">
-                                            {calendarDays.map((day, index) => {
-                                                const isCurrentMonth = day.getMonth() === selectedMonth.getMonth();
-                                                const isToday = day.toDateString() === today.toDateString();
-
-                                                return (
-                                                    <button
-                                                        key={index}
-                                                        onClick={() => {
-                                                            onDateSelect(day);
-                                                            setShowPicker(false);
-                                                        }}
-                                                        className={cn(
-                                                            "w-full aspect-square rounded-lg text-xs font-medium transition-all flex items-center justify-center",
-                                                            !isCurrentMonth && "text-muted-foreground/40",
-                                                            isCurrentMonth && "text-foreground hover:bg-muted",
-                                                            isToday && "bg-primary text-primary-foreground hover:bg-primary/90"
-                                                        )}
-                                                    >
-                                                        {day.getDate()}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-
-                                        <div className="mt-2 pt-2 border-t border-border">
-                                            <button
-                                                onClick={() => {
-                                                    onDateSelect(today);
-                                                    setShowPicker(false);
-                                                }}
-                                                className="w-full py-1.5 text-xs text-primary hover:bg-primary/10 rounded-lg transition-colors font-medium"
-                                            >
-                                                跳转到今天
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <button
-                        onClick={() => onGoToWeek(realCurrentWeek)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border text-foreground"
-                    >
-                        <Undo2 className="w-4 h-4" />
-                        回到本周
-                    </button>
-                )}
+                                    <div className="mt-2 pt-2 border-t border-border">
+                                        <button
+                                            onClick={() => {
+                                                onDateSelect(today);
+                                                setShowPicker(false);
+                                            }}
+                                            className="w-full py-1.5 text-xs text-primary hover:bg-primary/10 rounded-lg transition-colors font-medium"
+                                        >
+                                            跳转到今天
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
 
                 <button
                     onClick={onNextWeek}

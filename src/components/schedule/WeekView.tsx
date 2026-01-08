@@ -22,6 +22,9 @@ interface WeekViewProps {
     periodHeight: number;
     courseCornerRadius: number;
     onCourseClick?: (course: Course) => void;
+    // 触摸滑动事件
+    onSwipeLeft?: () => void;
+    onSwipeRight?: () => void;
 }
 
 export function WeekView({
@@ -37,6 +40,8 @@ export function WeekView({
     periodHeight,
     courseCornerRadius,
     onCourseClick,
+    onSwipeLeft,
+    onSwipeRight,
 }: WeekViewProps) {
     // 计算当前周的日期
     const weekDates = useMemo(() =>
@@ -87,8 +92,44 @@ export function WeekView({
         }
     };
 
+    // 触摸事件处理
+    const touchStartX = useRef<number | null>(null);
+    const touchStartY = useRef<number | null>(null);
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        touchStartX.current = e.touches[0].clientX;
+        touchStartY.current = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (!touchStartX.current || !touchStartY.current) return;
+
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+
+        const deltaX = touchEndX - touchStartX.current;
+        const deltaY = touchEndY - touchStartY.current;
+
+        // 重置触摸起点
+        touchStartX.current = null;
+        touchStartY.current = null;
+
+        // 判定滑动：水平距离 > 50px 且 水平距离 > 垂直距离 (防止误触垂直滚动)
+        if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+            if (deltaX > 0) {
+                onSwipeRight?.(); // 向右滑 -> 上一周
+            } else {
+                onSwipeLeft?.(); // 向左滑 -> 下一周
+            }
+        }
+    };
+
     return (
-        <div className="flex flex-col h-full bg-background">
+        <div
+            className="flex flex-col h-full bg-background"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+        >
             {/* 顶部悬浮表头 - 独立容器，手动同步滚动 */}
             <div
                 ref={headerRef}
