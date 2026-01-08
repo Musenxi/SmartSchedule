@@ -70,7 +70,7 @@ export function ScheduleToolbar({
     const calendarDays = generateCalendarDays();
 
     return (
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
+        <div className="flex items-center justify-between px-4 py-3 bg-background">
             {/* 左侧：日期和周次 */}
             <div className="flex items-center gap-4">
                 <div>
@@ -110,7 +110,7 @@ export function ScheduleToolbar({
 
                         {/* 选择器下拉菜单 */}
                         {showPicker && (
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 bg-card border border-border rounded-xl shadow-lg p-3 min-w-[280px] animate-in fade-in zoom-in-95 duration-150">
+                            <div className="absolute top-full right-0 mt-2 z-50 bg-card border border-border rounded-xl shadow-lg p-3 min-w-[280px] animate-in fade-in zoom-in-95 duration-150">
                                 {/* 模式切换标签 */}
                                 <div className="flex mb-3 bg-muted/50 rounded-lg p-1">
                                     <button

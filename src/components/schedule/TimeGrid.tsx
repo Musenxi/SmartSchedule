@@ -17,7 +17,7 @@ export function TimeGrid({ periods, periodHeight, showPeriodTime }: TimeGridProp
                 <div
                     key={period.number}
                     className={cn(
-                        "flex flex-col items-center justify-center border-b border-border/30",
+                        "flex flex-col items-center justify-center",
                         "text-xs text-muted-foreground"
                     )}
                     style={{ height: periodHeight, minWidth: 32 }}

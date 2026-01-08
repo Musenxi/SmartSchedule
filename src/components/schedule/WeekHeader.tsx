@@ -10,9 +10,9 @@ interface WeekHeaderProps {
 
 export function WeekHeader({ dates, visibleDays }: WeekHeaderProps) {
     return (
-        <div className="flex">
-            {/* 左上角月份显示 */}
-            <div className="w-[32px] h-14 flex flex-col items-center justify-center gap-0.5">
+        <div className="flex w-full">
+            {/* 左上角月份显示 - 双向悬浮 (Top via parent, Left via self) */}
+            <div className="sticky left-0 z-30 w-[32px] h-14 flex flex-col items-center justify-center gap-0.5 bg-background">
                 <span className="text-xs font-medium text-muted-foreground leading-none">
                     {dates[0]?.getMonth() + 1}
                 </span>
@@ -30,7 +30,7 @@ export function WeekHeader({ dates, visibleDays }: WeekHeaderProps) {
                     <div
                         key={dayOfWeek}
                         className={cn(
-                            "flex-1 flex flex-col items-center justify-center h-14",
+                            "flex-1 flex flex-col items-center justify-center h-14 min-w-0",
                             today && "bg-primary/10 rounded-lg"
                         )}
                     >

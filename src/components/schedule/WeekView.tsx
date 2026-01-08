@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { TimeGrid } from './TimeGrid';
 import { WeekHeader } from './WeekHeader';
 import { CourseCard } from './CourseCard';
@@ -78,34 +78,56 @@ export function WeekView({
 
     const gridHeight = periods.length * periodHeight;
 
+    const headerRef = useRef<HTMLDivElement>(null);
+    const bodyRef = useRef<HTMLDivElement>(null);
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        if (headerRef.current) {
+            headerRef.current.scrollLeft = e.currentTarget.scrollLeft;
+        }
+    };
+
     return (
         <div className="flex flex-col h-full bg-background">
-            {/* 周表头 */}
-            <WeekHeader dates={weekDates} visibleDays={visibleDays} />
+            {/* 顶部悬浮表头 - 独立容器，手动同步滚动 */}
+            <div
+                ref={headerRef}
+                className="flex-none overflow-hidden bg-background z-20"
+            >
+                <div className="w-full">
+                    <WeekHeader dates={weekDates} visibleDays={visibleDays} />
+                </div>
+            </div>
 
-            {/* 课表网格 */}
-            <div className="flex-1 overflow-auto">
-                <div className="flex min-h-full">
-                    {/* 时间列 */}
-                    <TimeGrid
-                        periods={periods}
-                        periodHeight={periodHeight}
-                        showPeriodTime={showPeriodTime}
-                    />
+            {/* 课表网格 - 滚动容器 */}
+            <div
+                ref={bodyRef}
+                className="flex-1 overflow-auto relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                onScroll={handleScroll}
+            >
+                <div className="flex min-h-full w-full">
+                    {/* 时间列 - 左侧悬浮 */}
+                    <div className="sticky left-0 z-10 bg-background">
+                        <TimeGrid
+                            periods={periods}
+                            periodHeight={periodHeight}
+                            showPeriodTime={showPeriodTime}
+                        />
+                    </div>
 
                     {/* 每天的列 */}
                     <div className="flex flex-1">
                         {visibleDays.map((day) => (
                             <div
                                 key={day}
-                                className="flex-1 relative border-r border-border/30"
+                                className="flex-1 relative border-r border-dashed border-muted-foreground/20 min-w-0"
                                 style={{ minHeight: gridHeight }}
                             >
                                 {/* 网格线 */}
                                 {showGridLines && periods.map((period) => (
                                     <div
                                         key={period.number}
-                                        className="absolute left-0 right-0 border-b border-border/20"
+                                        className="absolute left-0 right-0 border-b border-dashed border-muted-foreground/20"
                                         style={{ top: (period.number - 1) * periodHeight + periodHeight }}
                                     />
                                 ))}

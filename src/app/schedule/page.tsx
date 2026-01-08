@@ -21,8 +21,7 @@ interface ScheduleData extends Schedule {
   }>;
 }
 
-const MIN_PANEL_WIDTH = 300;
-const MAX_PANEL_WIDTH = 600;
+
 
 export default function SchedulePage() {
   const router = useRouter();
@@ -53,8 +52,12 @@ export default function SchedulePage() {
 
   const resize = useCallback((mouseMoveEvent: MouseEvent) => {
     if (isResizing) {
-      const newWidth = window.innerWidth - mouseMoveEvent.clientX;
-      if (newWidth >= MIN_PANEL_WIDTH && newWidth <= MAX_PANEL_WIDTH) {
+      const totalWidth = window.innerWidth;
+      const minWidth = totalWidth * 0.3;
+      const maxWidth = totalWidth * 0.7;
+
+      const newWidth = totalWidth - mouseMoveEvent.clientX;
+      if (newWidth >= minWidth && newWidth <= maxWidth) {
         setPanelWidth(newWidth);
       }
     }
@@ -74,8 +77,13 @@ export default function SchedulePage() {
     const savedWidth = localStorage.getItem('layout-panel-width');
     if (savedWidth) {
       const width = parseInt(savedWidth);
-      if (!isNaN(width) && width >= MIN_PANEL_WIDTH && width <= MAX_PANEL_WIDTH) {
-        setPanelWidth(width);
+      if (!isNaN(width)) {
+        const totalWidth = window.innerWidth;
+        const minWidth = totalWidth * 0.3;
+        const maxWidth = totalWidth * 0.7;
+        // 确保在 30% - 70% 范围内
+        const clampedWidth = Math.max(minWidth, Math.min(width, maxWidth));
+        setPanelWidth(clampedWidth);
       }
     }
   }, []);
@@ -177,9 +185,9 @@ export default function SchedulePage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden select-none">
-      {/* 主体内容区域 */}
-      <div className="flex flex-1 overflow-hidden relative">
+    <div className="flex flex-col h-[100dvh] bg-background text-foreground overflow-hidden select-none overscroll-none">
+      {/* 主体内容区域 - 移动端增加底部 padding 防止被导航栏遮挡 */}
+      <div className="flex flex-1 overflow-hidden relative md:pb-0 pb-[60px]">
         {/* 左侧：课程表 */}
         <div className={cn(
           "flex-1 flex flex-col min-w-0 transition-transform duration-300 md:transform-none bg-background",
@@ -247,12 +255,12 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {/* 底部导航栏 (仅移动端显示) */}
-      <div className="md:hidden flex items-center justify-around border-t border-border bg-card pb-safe">
+      {/* 底部导航栏 (仅移动端显示) - 固定到底部 */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm pb-safe h-[60px]">
         <button
           onClick={() => setMobileView('schedule')}
           className={cn(
-            "flex flex-col items-center justify-center flex-1 py-3 gap-1 hover:bg-muted/50 transition-colors",
+            "flex flex-col items-center justify-center flex-1 h-full gap-1 hover:bg-muted/50 transition-colors",
             mobileView === 'schedule' ? "text-primary" : "text-muted-foreground"
           )}
         >
@@ -263,7 +271,7 @@ export default function SchedulePage() {
         <button
           onClick={() => setMobileView('tasks')}
           className={cn(
-            "flex flex-col items-center justify-center flex-1 py-3 gap-1 hover:bg-muted/50 transition-colors",
+            "flex flex-col items-center justify-center flex-1 h-full gap-1 hover:bg-muted/50 transition-colors",
             mobileView === 'tasks' ? "text-primary" : "text-muted-foreground"
           )}
         >
@@ -273,7 +281,7 @@ export default function SchedulePage() {
 
         <button
           onClick={openSettingsModal}
-          className="flex flex-col items-center justify-center flex-1 py-3 gap-1 hover:bg-muted/50 text-muted-foreground transition-colors"
+          className="flex flex-col items-center justify-center flex-1 h-full gap-1 hover:bg-muted/50 text-muted-foreground transition-colors"
         >
           <Settings className="w-5 h-5" />
           <span className="text-[10px] font-medium">设置</span>

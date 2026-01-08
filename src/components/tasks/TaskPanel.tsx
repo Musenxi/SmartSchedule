@@ -5,15 +5,17 @@ import { useTasks } from '@/hooks/use-tasks';
 import { Task } from '@/types/task';
 import { TaskItem } from './TaskItem';
 import { CreateTaskModal } from './CreateTaskModal';
-import { Plus, ListTodo, ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Plus, ListTodo, ChevronDown, ChevronRight, CheckCircle2, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isSameDay, isPast } from 'date-fns';
+import { useUIStore } from '@/stores/ui-store';
 
 export function TaskPanel() {
     const { tasks, toggleTaskComplete, deleteTask, createTask } = useTasks();
     const [filter, setFilter] = useState<'all' | 'today' | 'todo'>('all');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
+    const { openSettingsModal } = useUIStore();
 
     const today = new Date();
 
@@ -102,13 +104,22 @@ export function TaskPanel() {
                         <ListTodo className="w-5 h-5 text-primary" />
                         任务列表
                     </h2>
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="p-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
-                        title="新建任务"
-                    >
-                        <Plus className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={openSettingsModal}
+                            className="hidden md:flex p-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                            title="设置"
+                        >
+                            <Settings className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="p-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+                            title="新建任务"
+                        >
+                            <Plus className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Filters */}
