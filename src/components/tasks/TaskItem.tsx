@@ -4,12 +4,13 @@ import { Task, TaskType } from '@/types/task';
 import { cn } from '@/lib/utils';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { Check, Trash2 } from 'lucide-react';
+import { Check, Trash2, Pencil } from 'lucide-react';
 
 interface TaskItemProps {
     task: Task;
     onToggle: (id: string, completed: boolean) => void;
     onDelete: (id: string) => void;
+    onClick?: (task: Task) => void;
 }
 
 const typeStyles: Record<TaskType, string> = {
@@ -26,7 +27,7 @@ const typeLabels: Record<TaskType, string> = {
     CUSTOM: '其他',
 };
 
-export function TaskItem({ task, onToggle, onDelete }: TaskItemProps) {
+export function TaskItem({ task, onToggle, onDelete, onClick }: TaskItemProps) {
     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
 
     // 判断是否过期（不考虑完成状态）- 对于普通任务，今天的不算过期
@@ -45,10 +46,11 @@ export function TaskItem({ task, onToggle, onDelete }: TaskItemProps) {
     };
 
     return (
-        <div className={cn(
-            "group flex items-start gap-3 p-3 rounded-xl border border-border bg-card transition-all hover:shadow-sm",
-            isCompleted && "opacity-50"
-        )}>
+        <div
+            className={cn(
+                "group flex items-start gap-3 p-3 rounded-xl border border-border bg-card transition-all hover:shadow-sm",
+                isCompleted && "opacity-50"
+            )}>
             {task.type !== 'EXAM' && (
                 <button
                     onClick={() => onToggle(task.id, !task.completed)}
@@ -113,15 +115,28 @@ export function TaskItem({ task, onToggle, onDelete }: TaskItemProps) {
                 )}
             </div>
 
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(task.id);
-                }}
-                className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all"
-            >
-                <Trash2 className="w-4 h-4" />
-            </button>
+            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onClick?.(task);
+                    }}
+                    className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all mr-1"
+                    title="编辑"
+                >
+                    <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(task.id);
+                    }}
+                    className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all"
+                    title="删除"
+                >
+                    <Trash2 className="w-4 h-4" />
+                </button>
+            </div>
         </div>
     );
 }

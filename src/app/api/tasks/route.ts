@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
                 courseId: body.courseId,
                 location: body.location,
                 priority: body.priority || 0,
+                showInSchedule: body.showInSchedule ?? true, // Default true
             },
             include: {
                 course: {

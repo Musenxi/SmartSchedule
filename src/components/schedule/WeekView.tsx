@@ -4,7 +4,7 @@ import { useMemo, useRef } from 'react';
 import { TimeGrid } from './TimeGrid';
 import { WeekHeader } from './WeekHeader';
 import { CourseCard } from './CourseCard';
-import { getWeekDates, isWeekInRange } from '@/lib/date-utils';
+import { getWeekDates, isWeekInRange, isCourseFinished } from '@/lib/date-utils';
 import { Course, Period } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -70,9 +70,17 @@ export function WeekView({
                 // 检查是否在可见的星期内
                 if (!visibleDays.includes(time.dayOfWeek)) continue;
 
-                // 检查是否显示非本周课程
+                // 检查是否在当前周
                 const isInCurrentWeek = isWeekInRange(currentWeek, time.weekRange);
-                if (!showNonCurrentWeek && !isInCurrentWeek) continue;
+
+                // 如果不仅在本周，检查显示设置
+                if (!isInCurrentWeek) {
+                    // 如果不显示非本周课程，跳过
+                    if (!showNonCurrentWeek) continue;
+
+                    // 如果课程已经结课（在这周之前结束），跳过
+                    if (isCourseFinished(currentWeek, time.weekRange)) continue;
+                }
 
                 result[time.dayOfWeek].push({ course, time });
             }

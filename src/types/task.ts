@@ -21,6 +21,7 @@ export interface Task {
         name: string;
         color: string;
     } | null;
+    showInSchedule: boolean;
 }
 
 export interface TaskInput {
@@ -32,6 +33,7 @@ export interface TaskInput {
     dueDate?: string; // ISO date string
     location?: string;
     priority?: number;
+    showInSchedule?: boolean;
 }
 
 export interface TaskFilter {

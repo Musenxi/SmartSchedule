@@ -51,10 +51,20 @@ export function CourseCard({
             onClick={onClick}
         >
             <div className="flex flex-col items-center justify-center w-full h-full px-[1px] md:px-1">
+                {/* 考试标签 */}
+                {time.teacher === '考试' && (
+                    <span className={cn(
+                        "text-[11px] md:text-xs font-bold text-white mb-0.5",
+                        isCurrentWeek ? "opacity-90" : "opacity-50"
+                    )}>
+                        考试
+                    </span>
+                )}
+
                 {/* 课程名称 - 允许收缩，如果空间不足 */}
                 <span
                     className={cn(
-                        "text-[11px] md:text-xs font-bold leading-tight line-clamp-6 break-all w-full min-h-0 flex-shrink overflow-hidden text-white",
+                        "text-[11px] md:text-xs font-bold leading-tight line-clamp-3 break-all w-full min-h-0 flex-shrink overflow-hidden text-white",
                         !isCurrentWeek && "opacity-60"
                     )}
                 >

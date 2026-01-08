@@ -84,6 +84,14 @@ export function isWeekInRange(currentWeek: number, weekRange: string): boolean {
     return weeks.includes(currentWeek);
 }
 
+// 检查课程是否已经结课（所有周次都在当前周之前）
+export function isCourseFinished(currentWeek: number, weekRange: string): boolean {
+    const weeks = parseWeekRange(weekRange);
+    if (weeks.length === 0) return false;
+    const maxWeek = Math.max(...weeks);
+    return maxWeek < currentWeek;
+}
+
 // 格式化周次范围为友好字符串
 export function formatWeekRange(weeks: number[]): string {
     if (weeks.length === 0) return '';

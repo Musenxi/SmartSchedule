@@ -33,7 +33,11 @@ export function useTasks() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newTask),
             });
-            if (!res.ok) throw new Error('Failed to create task');
+            if (!res.ok) {
+                const errorData = await res.text();
+                console.error('Task creation failed:', errorData);
+                throw new Error(errorData || 'Failed to create task');
+            }
             return res.json() as Promise<Task>;
         },
         onSuccess: (newTask) => {
@@ -108,7 +112,7 @@ export function useTasks() {
         isLoading,
         error,
         createTask: createMutation.mutateAsync,
-        updateTask: updateMutation.mutate,
+        updateTask: updateMutation.mutateAsync,
         deleteTask: deleteMutation.mutate,
         toggleTaskComplete: (id: string, completed: boolean) => toggleCompleteMutation.mutate({ id, completed }),
         isCreating: createMutation.isPending,

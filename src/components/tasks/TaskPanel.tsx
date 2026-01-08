@@ -11,9 +11,10 @@ import { isSameDay, isPast } from 'date-fns';
 import { useUIStore } from '@/stores/ui-store';
 
 export function TaskPanel() {
-    const { tasks, toggleTaskComplete, deleteTask, createTask } = useTasks();
+    const { tasks, toggleTaskComplete, deleteTask, createTask, updateTask } = useTasks();
     const [filter, setFilter] = useState<'all' | 'today' | 'todo'>('all');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
     const { openSettingsModal } = useUIStore();
 
@@ -95,6 +96,16 @@ export function TaskPanel() {
         completed: tasks.filter(t => t.completed).length,
     };
 
+    const handleEditTask = (task: Task) => {
+        setEditingTask(task);
+        setIsCreateModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsCreateModalOpen(false);
+        setEditingTask(null);
+    };
+
     return (
         <div className="h-full flex flex-col bg-card/50">
             {/* Header */}
@@ -113,7 +124,10 @@ export function TaskPanel() {
                             <Settings className="w-4 h-4" />
                         </button>
                         <button
-                            onClick={() => setIsCreateModalOpen(true)}
+                            onClick={() => {
+                                setEditingTask(null);
+                                setIsCreateModalOpen(true);
+                            }}
                             className="p-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
                             title="新建任务"
                         >
@@ -183,6 +197,7 @@ export function TaskPanel() {
                                     task={task}
                                     onToggle={toggleTaskComplete}
                                     onDelete={deleteTask}
+                                    onClick={handleEditTask}
                                 />
                             ))}
                         </div>
@@ -206,6 +221,7 @@ export function TaskPanel() {
                                                 task={task}
                                                 onToggle={toggleTaskComplete}
                                                 onDelete={deleteTask}
+                                                onClick={handleEditTask}
                                             />
                                         ))}
                                     </div>
@@ -218,9 +234,14 @@ export function TaskPanel() {
 
             <CreateTaskModal
                 isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                onSubmit={async (task) => {
-                    await createTask(task);
+                onClose={handleCloseModal}
+                initialData={editingTask || undefined}
+                onSubmit={async (taskInput) => {
+                    if (editingTask) {
+                        await updateTask({ id: editingTask.id, updates: taskInput });
+                    } else {
+                        await createTask(taskInput);
+                    }
                 }}
             />
         </div>

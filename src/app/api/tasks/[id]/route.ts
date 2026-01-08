@@ -38,6 +38,7 @@ export async function PUT(
                 completed: body.completed,
                 priority: body.priority,
                 type: body.type,
+                showInSchedule: body.showInSchedule,
             },
             include: {
                 course: {

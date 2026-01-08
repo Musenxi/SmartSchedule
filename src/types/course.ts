@@ -21,6 +21,8 @@ export interface CourseTime {
     weekRange: string; // "1-16" 或 "1,3,5,7-10"
     teacher?: string | null;
     location?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
 }
 
 export interface CourseInput {
@@ -38,6 +40,8 @@ export interface CourseTimeInput {
     weekRange: string;
     teacher?: string;
     location?: string;
+    startTime?: string;
+    endTime?: string;
 }
 
 // PDF识别结果
