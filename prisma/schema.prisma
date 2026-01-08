@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -11,4 +5,156 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// 用户表
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  password  String
+  name      String?
+  avatar    String?
+  schedules Schedule[]
+  tasks     Task[]
+  settings  Settings?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("users")
+}
+
+// 课表表
+model Schedule {
+  id                        String      @id @default(cuid())
+  userId                    String
+  user                      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                      String      // 课表名称，如 "大二上"
+  firstWeekStart            DateTime    // 第一周第一天
+  weekStartDay              Int         @default(1) // 一周起始：1=周一，7=周日
+  totalWeeks                Int         @default(20) // 学期总周数
+  periodsPerDay             Int         @default(12) // 每天节数
+  isActive                  Boolean     @default(false) // 是否为当前激活课表
+  enableAutoTimeTableSwitch Boolean     @default(false) // 是否启用时间表自动切换
+  courses                   Course[]
+  timeTables                TimeTable[]
+  activeTimeTableId         String? // 当前使用的时间表ID（手动模式下使用）
+  createdAt                 DateTime    @default(now())
+  updatedAt                 DateTime    @updatedAt
+
+  @@map("schedules")
+}
+
+// 课程表
+model Course {
+  id         String       @id @default(cuid())
+  scheduleId String
+  schedule   Schedule     @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  name       String       // 课程名称
+  color      String       @default("#3B82F6") // 课程颜色
+  credits    Float?       // 学分
+  note       String?      // 备注
+  times      CourseTime[]
+  tasks      Task[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@map("courses")
+}
+
+// 课程时间段
+model CourseTime {
+  id          String  @id @default(cuid())
+  courseId    String
+  course      Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  dayOfWeek   Int     // 星期几：1-7
+  startPeriod Int     // 开始节次
+  endPeriod   Int     // 结束节次
+  weekRange   String  // 周次范围："1-16" 或 "1,3,5,7-10"
+  teacher     String? // 教师
+  location    String? // 地点
+
+  @@map("course_times")
+}
+
+// 上课时间表
+model TimeTable {
+  id           String    @id @default(cuid())
+  scheduleId   String
+  schedule     Schedule  @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  name         String    // 时间表名称，如 "冬令时 10.1-4.30"
+  sameDuration Boolean   @default(true) // 每节课时长是否相同
+  startDate    DateTime? // 生效开始日期（用于自动切换）
+  endDate      DateTime? // 生效结束日期（用于自动切换）
+  isDefault    Boolean   @default(false) // 是否为默认时间表
+  periods      Period[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("time_tables")
+}
+
+// 节次时间
+model Period {
+  id          String    @id @default(cuid())
+  timeTableId String
+  timeTable   TimeTable @relation(fields: [timeTableId], references: [id], onDelete: Cascade)
+  number      Int       // 节次序号
+  startTime   String    // 开始时间 "08:00"
+  endTime     String    // 结束时间 "08:45"
+
+  @@map("periods")
+}
+
+// 任务表（作业、日程、考试等）
+model Task {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    String? // 关联课程（可选）
+  course      Course?   @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  type        TaskType  // 任务类型
+  title       String    // 标题
+  description String?   // 描述
+  dueDate     DateTime? // 截止时间
+  location    String?   // 地点（考试用）
+  completed   Boolean   @default(false) // 是否完成
+  priority    Int       @default(0) // 优先级
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("tasks")
+}
+
+// 任务类型枚举
+enum TaskType {
+  HOMEWORK // 作业
+  EXAM     // 考试
+  EVENT    // 日程
+  CUSTOM   // 自定义
+}
+
+// 用户设置表
+model Settings {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // 外观设置
+  useSolidBackground Boolean  @default(true)
+  backgroundImage    String?
+  headerColor        String   @default("#f5f5f5")
+  showGridLines      Boolean  @default(true)
+  showPeriodTime     Boolean  @default(true)
+  showSaturday       Boolean  @default(true)
+  showSunday         Boolean  @default(true)
+  showNonCurrentWeek Boolean  @default(true)
+  courseCornerRadius Int      @default(8)
+  courseTextColor    String   @default("#ffffff")
+  periodHeight       Int      @default(47)
+  // 通用设置
+  theme              String   @default("system")
+  language           String   @default("zh-CN")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("settings")
 }

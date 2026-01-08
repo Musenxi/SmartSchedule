@@ -1,0 +1,124 @@
+import {
+    format,
+    addDays,
+    startOfWeek,
+    endOfWeek,
+    differenceInWeeks,
+    isWithinInterval,
+    isSameDay,
+    parseISO,
+    addWeeks,
+} from 'date-fns';
+import { zhCN } from 'date-fns/locale';
+
+// 获取指定周的日期数组
+export function getWeekDates(
+    firstWeekStart: Date,
+    weekNumber: number,
+    weekStartDay: number = 1 // 1=周一
+): Date[] {
+    const weekStart = addWeeks(new Date(firstWeekStart), weekNumber - 1);
+    const dates: Date[] = [];
+
+    for (let i = 0; i < 7; i++) {
+        dates.push(addDays(weekStart, i));
+    }
+
+    return dates;
+}
+
+// 计算当前周次
+export function getCurrentWeek(firstWeekStart: Date, targetDate: Date = new Date()): number {
+    const start = new Date(firstWeekStart);
+    const diffWeeks = differenceInWeeks(targetDate, start);
+    return Math.max(1, diffWeeks + 1);
+}
+
+// 格式化日期为显示格式
+export function formatDate(date: Date | string, formatStr: string = 'yyyy/M/d'): string {
+    const d = typeof date === 'string' ? parseISO(date) : date;
+    return format(d, formatStr, { locale: zhCN });
+}
+
+// 格式化星期
+export function formatWeekday(date: Date | string): string {
+    const d = typeof date === 'string' ? parseISO(date) : date;
+    return format(d, 'EEEE', { locale: zhCN });
+}
+
+// 格式化星期简写
+export function formatWeekdayShort(dayOfWeek: number): string {
+    const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
+    return weekdays[dayOfWeek - 1] || '';
+}
+
+// 解析周次范围字符串
+// 支持格式: "1-16", "1,3,5,7-10", "1-8,10-16"
+export function parseWeekRange(weekRange: string): number[] {
+    const weeks: Set<number> = new Set();
+
+    const parts = weekRange.split(',').map(p => p.trim());
+
+    for (const part of parts) {
+        if (part.includes('-')) {
+            const [start, end] = part.split('-').map(n => parseInt(n.trim(), 10));
+            if (!isNaN(start) && !isNaN(end)) {
+                for (let i = start; i <= end; i++) {
+                    weeks.add(i);
+                }
+            }
+        } else {
+            const num = parseInt(part, 10);
+            if (!isNaN(num)) {
+                weeks.add(num);
+            }
+        }
+    }
+
+    return Array.from(weeks).sort((a, b) => a - b);
+}
+
+// 检查某周是否在周次范围内
+export function isWeekInRange(currentWeek: number, weekRange: string): boolean {
+    const weeks = parseWeekRange(weekRange);
+    return weeks.includes(currentWeek);
+}
+
+// 格式化周次范围为友好字符串
+export function formatWeekRange(weeks: number[]): string {
+    if (weeks.length === 0) return '';
+
+    const sorted = [...weeks].sort((a, b) => a - b);
+    const ranges: string[] = [];
+    let start = sorted[0];
+    let end = sorted[0];
+
+    for (let i = 1; i <= sorted.length; i++) {
+        if (sorted[i] === end + 1) {
+            end = sorted[i];
+        } else {
+            ranges.push(start === end ? `${start}` : `${start}-${end}`);
+            if (i < sorted.length) {
+                start = sorted[i];
+                end = sorted[i];
+            }
+        }
+    }
+
+    return ranges.join(',');
+}
+
+// 判断是否是今天
+export function isToday(date: Date): boolean {
+    return isSameDay(date, new Date());
+}
+
+// 格式化时间 (08:00)
+export function formatTime(time: string): string {
+    return time;
+}
+
+// 计算节次跨度
+export function getPeriodSpan(startPeriod: number, endPeriod: number): number {
+    return endPeriod - startPeriod + 1;
+}
