@@ -32,6 +32,7 @@ interface ScheduleData extends Schedule {
 export default function SchedulePage() {
   const router = useRouter();
   const [schedule, setSchedule] = useState<ScheduleData | null>(null);
+  const [allSchedules, setAllSchedules] = useState<ScheduleData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentWeek, setCurrentWeek] = useState(1);
@@ -308,7 +309,7 @@ export default function SchedulePage() {
   }, [schedule, taskCourses]);
 
   // 获取课表数据
-  const fetchSchedule = useCallback(async (preserveWeek = false) => {
+  const fetchSchedule = useCallback(async (preserveWeek = false, targetScheduleId?: string) => {
     try {
       const res = await fetch('/api/schedules');
 
@@ -322,14 +323,23 @@ export default function SchedulePage() {
       }
 
       const schedules = await res.json();
+      setAllSchedules(schedules);
 
       if (schedules.length > 0) {
-        const activeSchedule = schedules.find((s: ScheduleData) => s.isActive) || schedules[0];
-        setSchedule(activeSchedule);
-        // Only update currentWeek on initial load, not on refresh
+        // If targetScheduleId is provided, use that; otherwise use active or first
+        let targetSchedule;
+        if (targetScheduleId) {
+          targetSchedule = schedules.find((s: ScheduleData) => s.id === targetScheduleId);
+        }
+        if (!targetSchedule) {
+          targetSchedule = schedules.find((s: ScheduleData) => s.isActive) || schedules[0];
+        }
+
+        setSchedule(targetSchedule);
+        // Only update currentWeek on initial load or schedule switch
         if (!preserveWeek) {
-          const week = getCurrentWeek(new Date(activeSchedule.firstWeekStart));
-          setCurrentWeek(Math.min(Math.max(1, week), activeSchedule.totalWeeks));
+          const week = getCurrentWeek(new Date(targetSchedule.firstWeekStart));
+          setCurrentWeek(Math.min(Math.max(1, week), targetSchedule.totalWeeks));
         }
       }
     } catch (err) {
@@ -338,6 +348,10 @@ export default function SchedulePage() {
       setLoading(false);
     }
   }, [router]);
+
+  const handleScheduleChange = useCallback((scheduleId: string) => {
+    fetchSchedule(false, scheduleId);
+  }, [fetchSchedule]);
 
   useEffect(() => {
     fetchSchedule();
@@ -410,10 +424,13 @@ export default function SchedulePage() {
             realCurrentWeek={realCurrentWeek}
             totalWeeks={schedule.totalWeeks}
             scheduleName={schedule.name}
+            schedules={allSchedules.map(s => ({ id: s.id, name: s.name, isActive: s.isActive }))}
+            currentScheduleId={schedule.id}
             onPrevWeek={() => setCurrentWeek(w => Math.max(1, w - 1))}
             onNextWeek={() => setCurrentWeek(w => Math.min(schedule.totalWeeks, w + 1))}
             onGoToWeek={(week) => setCurrentWeek(week)}
             onDateSelect={handleDateSelect}
+            onScheduleChange={handleScheduleChange}
           />
           <div className="flex-1 overflow-hidden relative bg-card/30">
             <WeekView

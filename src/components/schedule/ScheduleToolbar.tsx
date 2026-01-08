@@ -1,21 +1,30 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, CalendarDays, Undo2, Calendar, Hash } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Undo2, Calendar, Hash, ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/date-utils';
 import { useRef, useState, useEffect } from 'react';
 import { format, addDays, startOfWeek } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
+interface Schedule {
+    id: string;
+    name: string;
+    isActive: boolean;
+}
+
 interface ScheduleToolbarProps {
     currentWeek: number;
     realCurrentWeek: number;
     totalWeeks: number;
     scheduleName: string;
+    schedules?: Schedule[];
+    currentScheduleId?: string;
     onPrevWeek: () => void;
     onNextWeek: () => void;
     onGoToWeek: (week: number) => void;
     onDateSelect: (date: Date) => void;
+    onScheduleChange?: (scheduleId: string) => void;
 }
 
 export function ScheduleToolbar({
@@ -23,18 +32,23 @@ export function ScheduleToolbar({
     realCurrentWeek,
     totalWeeks,
     scheduleName,
+    schedules,
+    currentScheduleId,
     onPrevWeek,
     onNextWeek,
     onGoToWeek,
     onDateSelect,
+    onScheduleChange,
 }: ScheduleToolbarProps) {
     const isFirstWeek = currentWeek <= 1;
     const isLastWeek = currentWeek >= totalWeeks;
     const isCurrentRealWeek = currentWeek === realCurrentWeek;
     const [showPicker, setShowPicker] = useState(false);
+    const [showScheduleList, setShowScheduleList] = useState(false);
     const [pickerMode, setPickerMode] = useState<'week' | 'date'>('week');
     const [selectedMonth, setSelectedMonth] = useState(new Date());
     const pickerRef = useRef<HTMLDivElement>(null);
+    const scheduleListRef = useRef<HTMLDivElement>(null);
 
     // 今天的真实日期
     const today = new Date();
@@ -44,6 +58,9 @@ export function ScheduleToolbar({
         const handleClickOutside = (e: MouseEvent) => {
             if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
                 setShowPicker(false);
+            }
+            if (scheduleListRef.current && !scheduleListRef.current.contains(e.target as Node)) {
+                setShowScheduleList(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -83,9 +100,67 @@ export function ScheduleToolbar({
                             {formatDate(today, 'yyyy/M/d')}
                         </h2>
                     </button>
-                    <p className="text-sm text-muted-foreground">
-                        {scheduleName}
-                    </p>
+                    <div className="relative flex items-center gap-2" ref={scheduleListRef}>
+                        <button
+                            onClick={() => setShowScheduleList(!showScheduleList)}
+                            className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                        >
+                            {scheduleName}
+                            {schedules && schedules.length > 1 && (
+                                <ChevronDown className={cn(
+                                    "w-3 h-3 transition-transform",
+                                    showScheduleList && "rotate-180"
+                                )} />
+                            )}
+                        </button>
+
+                        {/* 添加课表按钮 - 只有一个课表时显示 */}
+                        {showScheduleList && schedules && schedules.length === 1 && (
+                            <a
+                                href="/import"
+                                className="flex items-center justify-center w-4 h-4 text-primary hover:text-primary/80 transition-colors animate-in fade-in slide-in-from-left-1 duration-300"
+                                title="添加课表"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v8m4-4H8" />
+                                </svg>
+                            </a>
+                        )}
+
+                        {/* 课程表列表下拉菜单 - 多个课表时显示 */}
+                        {showScheduleList && schedules && schedules.length > 1 && (
+                            <div className="absolute top-full left-0 mt-2 w-48 bg-card rounded-xl shadow-xl border border-border overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                                {schedules.map((s) => (
+                                    <button
+                                        key={s.id}
+                                        onClick={() => {
+                                            onScheduleChange?.(s.id);
+                                            setShowScheduleList(false);
+                                        }}
+                                        className={cn(
+                                            "w-full p-3 text-left text-sm hover:bg-muted/50 transition-colors flex items-center justify-between",
+                                            s.id === currentScheduleId && "bg-primary/10"
+                                        )}
+                                    >
+                                        <span>{s.name}</span>
+                                        {s.id === currentScheduleId && (
+                                            <Check className="w-4 h-4 text-primary" />
+                                        )}
+                                    </button>
+                                ))}
+                                <a
+                                    href="/import"
+                                    className="w-full p-3 text-left text-sm hover:bg-muted/50 transition-colors flex items-center gap-2 border-t border-border text-primary"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    添加新课表
+                                </a>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
