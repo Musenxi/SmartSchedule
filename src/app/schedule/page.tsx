@@ -10,7 +10,7 @@ import { EditCourseModal } from '@/components/schedule/EditCourseModal';
 import { CourseDetailModal } from '@/components/schedule/CourseDetailModal';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUIStore } from '@/stores/ui-store';
-import { Course, Period, Schedule } from '@/types';
+import { Course, Period, Schedule, CourseTime } from '@/types';
 import { Task } from '@/types/task';
 import { useTasks } from '@/hooks/use-tasks';
 import { getCurrentWeek, getWeekDates, isWeekInRange } from '@/lib/date-utils';
@@ -58,8 +58,9 @@ export default function SchedulePage() {
   const [isCourseDetailOpen, setIsCourseDetailOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
 
-  const handleCourseClick = (course: Course) => {
+  const handleCourseClick = (course: Course, time?: CourseTime) => {
     if (course.id.startsWith('task-')) {
       // 是任务（考试/活动）：打开任务编辑
       const taskId = course.id.replace('task-', '');
@@ -71,6 +72,13 @@ export default function SchedulePage() {
     } else {
       // 是普通课程：打开课程详情
       setSelectedCourse(course);
+      // Find the index of the clicked time slot
+      if (time) {
+        const timeIndex = course.times.findIndex(t => t.id === time.id);
+        setSelectedTimeIndex(timeIndex >= 0 ? timeIndex : 0);
+      } else {
+        setSelectedTimeIndex(0);
+      }
       setIsCourseDetailOpen(true);
     }
   };
@@ -451,6 +459,8 @@ export default function SchedulePage() {
           course={selectedCourse}
           onEdit={handleEditFromDetail}
           periods={periods}
+          currentWeek={currentWeek}
+          selectedTimeIndex={selectedTimeIndex}
         />
       )}
 

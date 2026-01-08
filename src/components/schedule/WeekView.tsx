@@ -5,7 +5,7 @@ import { TimeGrid } from './TimeGrid';
 import { WeekHeader } from './WeekHeader';
 import { CourseCard } from './CourseCard';
 import { getWeekDates, isWeekInRange, isCourseFinished } from '@/lib/date-utils';
-import { Course, Period } from '@/types';
+import { Course, Period, CourseTime } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface WeekViewProps {
@@ -21,7 +21,7 @@ interface WeekViewProps {
     showNonCurrentWeek: boolean;
     periodHeight: number;
     courseCornerRadius: number;
-    onCourseClick?: (course: Course) => void;
+    onCourseClick?: (course: Course, time: CourseTime) => void;
     // 触摸滑动事件
     onSwipeLeft?: () => void;
     onSwipeRight?: () => void;
@@ -190,7 +190,7 @@ export function WeekView({
                                         periodHeight={periodHeight}
                                         currentWeek={currentWeek}
                                         cornerRadius={courseCornerRadius}
-                                        onClick={() => onCourseClick?.(course)}
+                                        onClick={() => onCourseClick?.(course, time)}
                                     />
                                 ))}
                             </div>
