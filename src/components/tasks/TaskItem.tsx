@@ -28,7 +28,15 @@ const typeLabels: Record<TaskType, string> = {
 
 export function TaskItem({ task, onToggle, onDelete }: TaskItemProps) {
     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
-    const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate) && !task.completed;
+
+    // 判断是否过期（不考虑完成状态）- 对于普通任务，今天的不算过期
+    const isPastDue = dueDate && isPast(dueDate) && !isToday(dueDate);
+    // 对于非考试任务，已完成就不显示为过期
+    const isOverdue = isPastDue && !task.completed;
+
+    // 考试：只要结束时间过了就算过期（包括今天的考试）
+    const isExamExpired = task.type === 'EXAM' && dueDate && isPast(dueDate);
+    const isCompleted = task.completed || isExamExpired;
 
     const formatDateText = (date: Date) => {
         if (isToday(date)) return '今天';
@@ -39,47 +47,60 @@ export function TaskItem({ task, onToggle, onDelete }: TaskItemProps) {
     return (
         <div className={cn(
             "group flex items-start gap-3 p-3 rounded-xl border border-border bg-card transition-all hover:shadow-sm",
-            task.completed && "opacity-60 bg-muted/30"
+            isCompleted && "opacity-50"
         )}>
-            <button
-                onClick={() => onToggle(task.id, !task.completed)}
-                className={cn(
-                    "mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
-                    task.completed
-                        ? "bg-primary border-primary text-primary-foreground"
-                        : "border-muted-foreground/30 hover:border-primary"
-                )}
-            >
-                {task.completed && <Check className="w-3 h-3" />}
-            </button>
+            {task.type !== 'EXAM' && (
+                <button
+                    onClick={() => onToggle(task.id, !task.completed)}
+                    className={cn(
+                        "mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
+                        task.completed
+                            ? "bg-gray-400 border-gray-400 text-white dark:bg-gray-600 dark:border-gray-600"
+                            : "border-muted-foreground/30 hover:border-primary"
+                    )}
+                >
+                    {task.completed && <Check className="w-3 h-3" />}
+                </button>
+            )}
 
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                     <span className={cn(
                         "text-xs px-1 py-0.5 rounded-md font-bold",
-                        typeStyles[task.type]
+                        isCompleted ? "!bg-gray-200 !text-gray-500 !border-gray-300 dark:!bg-gray-700 dark:!text-gray-400 dark:!border-gray-600" : typeStyles[task.type]
                     )}>
                         {typeLabels[task.type]}
                     </span>
                     {dueDate && (
                         <span className={cn(
                             "text-xs",
-                            isOverdue ? "text-destructive font-medium" : "text-muted-foreground"
+                            isCompleted ? "text-gray-400 dark:text-gray-500" : (isOverdue && !isExamExpired) ? "text-destructive font-medium" : "text-muted-foreground"
                         )}>
-                            {formatDateText(dueDate)} {format(dueDate, 'HH:mm')}
+                            {task.startTime ? (
+                                <>
+                                    {formatDateText(new Date(task.startTime))} {format(new Date(task.startTime), 'HH:mm')} - {format(dueDate, 'HH:mm')}
+                                </>
+                            ) : (
+                                <>
+                                    {formatDateText(dueDate)} {format(dueDate, 'HH:mm')}
+                                </>
+                            )}
                         </span>
                     )}
                 </div>
 
                 <h3 className={cn(
                     "font-medium truncate transition-all",
-                    task.completed ? "text-muted-foreground line-through decoration-border" : "text-foreground"
+                    isCompleted ? "text-gray-400 line-through decoration-gray-300 dark:text-gray-500 dark:decoration-gray-600" : "text-foreground"
                 )}>
                     {task.title}
                 </h3>
 
                 {task.description && (
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    <p className={cn(
+                        "text-xs mt-1 line-clamp-2",
+                        isCompleted ? "text-gray-400 dark:text-gray-500" : "text-muted-foreground"
+                    )}>
                         {task.description}
                     </p>
                 )}

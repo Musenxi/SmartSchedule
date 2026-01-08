@@ -106,7 +106,7 @@ export function WeekView({
                                     <div
                                         key={period.number}
                                         className="absolute left-0 right-0 border-b border-border/20"
-                                        style={{ top: period.number * periodHeight }}
+                                        style={{ top: (period.number - 1) * periodHeight + periodHeight }}
                                     />
                                 ))}
 

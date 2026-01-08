@@ -178,23 +178,6 @@ export default function SchedulePage() {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden select-none">
-      {/* 顶部导航 */}
-      <header className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-border bg-card z-10">
-        <div className="flex items-center gap-3">
-          <span className="font-semibold text-foreground">SmartSchedule</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* 仅在桌面端显示的设置按钮，或者移动端放 header? 用户需求是底部导航放切换，设置可能还需要在上面 */}
-          <button onClick={openSettingsModal} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-            <Settings className="w-5 h-5" />
-          </button>
-          <button onClick={handleLogout} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-            <LogOut className="w-5 h-5" />
-          </button>
-        </div>
-      </header>
-
       {/* 主体内容区域 */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* 左侧：课程表 */}
@@ -269,23 +252,31 @@ export default function SchedulePage() {
         <button
           onClick={() => setMobileView('schedule')}
           className={cn(
-            "flex flex-col items-center justify-center flex-1 py-3 gap-1",
+            "flex flex-col items-center justify-center flex-1 py-3 gap-1 hover:bg-muted/50 transition-colors",
             mobileView === 'schedule' ? "text-primary" : "text-muted-foreground"
           )}
         >
-          <CalendarDays className="w-6 h-6" />
-          <span className="text-xs font-medium">课程表</span>
+          <CalendarDays className="w-5 h-5" />
+          <span className="text-[10px] font-medium">课程表</span>
         </button>
 
         <button
           onClick={() => setMobileView('tasks')}
           className={cn(
-            "flex flex-col items-center justify-center flex-1 py-3 gap-1",
+            "flex flex-col items-center justify-center flex-1 py-3 gap-1 hover:bg-muted/50 transition-colors",
             mobileView === 'tasks' ? "text-primary" : "text-muted-foreground"
           )}
         >
-          <ListTodo className="w-6 h-6" />
-          <span className="text-xs font-medium">待办</span>
+          <ListTodo className="w-5 h-5" />
+          <span className="text-[10px] font-medium">任务</span>
+        </button>
+
+        <button
+          onClick={openSettingsModal}
+          className="flex flex-col items-center justify-center flex-1 py-3 gap-1 hover:bg-muted/50 text-muted-foreground transition-colors"
+        >
+          <Settings className="w-5 h-5" />
+          <span className="text-[10px] font-medium">设置</span>
         </button>
       </div>
 

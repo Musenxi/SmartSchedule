@@ -36,36 +36,38 @@ export function CourseCard({
     return (
         <div
             className={cn(
-                "absolute left-1 right-1 p-2 cursor-pointer",
-                "flex flex-col overflow-hidden",
-                "hover:opacity-90 transition-all hover:shadow-md",
+                "absolute left-[1px] right-[1px] p-0.5 cursor-pointer",
+                "flex flex-col items-center justify-center text-center",
+                "hover:opacity-90 transition-all hover:shadow-md overflow-hidden",
                 !isCurrentWeek && "opacity-50"
             )}
             style={style}
             onClick={onClick}
         >
-            <span
-                className="text-xs font-medium leading-tight line-clamp-2"
-                style={{ color: isCurrentWeek ? textColor : course.color }}
-            >
-                {course.name}
-            </span>
-            {time.location && (
+            <div className="flex flex-col items-center justify-center w-full h-full px-[1px] md:px-1">
+                {/* 课程名称 - 允许收缩，如果空间不足 */}
                 <span
-                    className="text-[10px] mt-1 opacity-80 line-clamp-2"
+                    className="text-[11px] md:text-xs font-bold leading-tight line-clamp-6 break-all w-full min-h-0 flex-shrink overflow-hidden"
                     style={{ color: isCurrentWeek ? textColor : course.color }}
                 >
-                    @{time.location}
+                    {course.name}
                 </span>
-            )}
-            {time.teacher && (
-                <span
-                    className="text-[10px] opacity-70 line-clamp-1"
-                    style={{ color: isCurrentWeek ? textColor : course.color }}
-                >
-                    {time.teacher}
-                </span>
-            )}
+
+                {/* 地点 - 禁止收缩，保证优先显示 */}
+                {time.location && (
+                    <div className="flex flex-col items-center justify-center w-full mt-0.5 space-y-[1px] flex-shrink-0">
+                        {time.location.split(' ').map((part, index) => (
+                            <span
+                                key={index}
+                                className="text-[10px] leading-tight opacity-90 break-all w-full"
+                                style={{ color: isCurrentWeek ? textColor : course.color }}
+                            >
+                                {index === 0 ? '@' : ''}{part}
+                            </span>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

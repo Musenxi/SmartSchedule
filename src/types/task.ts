@@ -9,6 +9,7 @@ export interface Task {
     type: TaskType;
     title: string;
     description?: string | null;
+    startTime?: Date | null;
     dueDate?: Date | null;
     location?: string | null;
     completed: boolean;
@@ -27,6 +28,7 @@ export interface TaskInput {
     type: TaskType;
     title: string;
     description?: string;
+    startTime?: string; // ISO date string
     dueDate?: string; // ISO date string
     location?: string;
     priority?: number;

@@ -1,92 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
-import { z } from 'zod';
+import { TaskInput } from '@/types/task';
 
-const taskTypeEnum = z.enum(['HOMEWORK', 'EXAM', 'EVENT', 'CUSTOM']);
+// GET: 获取任务列表
+export async function GET(req: NextRequest) {
+    const user = getAuthUser(req);
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-const createTaskSchema = z.object({
-    courseId: z.string().optional(),
-    type: taskTypeEnum,
-    title: z.string().min(1).max(200),
-    description: z.string().optional(),
-    dueDate: z.string().datetime().optional(),
-    location: z.string().optional(),
-    priority: z.number().min(0).max(10).default(0),
-});
-
-// GET /api/tasks - 获取任务列表
-export async function GET(request: NextRequest) {
     try {
-        const { searchParams } = new URL(request.url);
-        const type = searchParams.get('type');
-        const completed = searchParams.get('completed');
-        const courseId = searchParams.get('courseId');
-
-        const auth = getAuthUser(request);
-        if (!auth) {
-            return NextResponse.json({ error: '未登录' }, { status: 401 });
-        }
-        const userId = auth.userId;
-
-        const where: Record<string, unknown> = { userId };
-
-        if (type) {
-            where.type = type;
-        }
-        if (completed !== null) {
-            where.completed = completed === 'true';
-        }
-        if (courseId) {
-            where.courseId = courseId;
-        }
-
         const tasks = await prisma.task.findMany({
-            where,
+            where: { userId: user.userId },
             include: {
                 course: {
                     select: { id: true, name: true, color: true }
                 }
             },
             orderBy: [
-                { dueDate: 'asc' },
-                { priority: 'desc' },
-                { createdAt: 'desc' }
+                { completed: 'asc' },
+                { dueDate: 'asc' }
             ]
         });
-
         return NextResponse.json(tasks);
     } catch (error) {
-        console.error('获取任务失败:', error);
-        return NextResponse.json(
-            { error: '获取任务失败' },
-            { status: 500 }
-        );
+        console.error('Fetch tasks error:', error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
 
-// POST /api/tasks - 创建任务
-export async function POST(request: NextRequest) {
-    try {
-        const auth = getAuthUser(request);
-        if (!auth) {
-            return NextResponse.json({ error: '未登录' }, { status: 401 });
-        }
-        const userId = auth.userId;
+// POST: 创建任务
+export async function POST(req: NextRequest) {
+    const user = getAuthUser(req);
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-        const body = await request.json();
-        const validated = createTaskSchema.parse(body);
+    try {
+        const body: TaskInput = await req.json();
+
+        // 基本验证
+        if (!body.title || !body.type) {
+            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        }
 
         const task = await prisma.task.create({
             data: {
-                userId,
-                courseId: validated.courseId,
-                type: validated.type,
-                title: validated.title,
-                description: validated.description,
-                dueDate: validated.dueDate ? new Date(validated.dueDate) : null,
-                location: validated.location,
-                priority: validated.priority,
+                userId: user.userId,
+                title: body.title,
+                type: body.type,
+                description: body.description,
+                startTime: body.startTime ? new Date(body.startTime) : null,
+                dueDate: body.dueDate ? new Date(body.dueDate) : null,
+                courseId: body.courseId,
+                location: body.location,
+                priority: body.priority || 0,
             },
             include: {
                 course: {
@@ -95,18 +64,9 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        return NextResponse.json(task, { status: 201 });
+        return NextResponse.json(task);
     } catch (error) {
-        console.error('创建任务失败:', error);
-        if (error instanceof z.ZodError) {
-            return NextResponse.json(
-                { error: '参数验证失败', details: error.issues },
-                { status: 400 }
-            );
-        }
-        return NextResponse.json(
-            { error: '创建任务失败' },
-            { status: 500 }
-        );
+        console.error('Create task error:', error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

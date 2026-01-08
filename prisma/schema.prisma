@@ -115,6 +115,7 @@ model Task {
   type        TaskType  // 任务类型
   title       String    // 标题
   description String?   // 描述
+  startTime   DateTime? // 开始时间
   dueDate     DateTime? // 截止时间
   location    String?   // 地点（考试用）
   completed   Boolean   @default(false) // 是否完成

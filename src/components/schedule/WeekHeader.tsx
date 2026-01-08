@@ -10,9 +10,16 @@ interface WeekHeaderProps {
 
 export function WeekHeader({ dates, visibleDays }: WeekHeaderProps) {
     return (
-        <div className="flex border-b border-border bg-muted/50">
-            {/* 空白角落 - 与TimeGrid对齐 */}
-            <div className="w-[50px] h-14 border-r border-border/50" />
+        <div className="flex">
+            {/* 左上角月份显示 */}
+            <div className="w-[32px] h-14 flex flex-col items-center justify-center gap-0.5">
+                <span className="text-xs font-medium text-muted-foreground leading-none">
+                    {dates[0]?.getMonth() + 1}
+                </span>
+                <span className="text-xs font-medium text-muted-foreground leading-none">
+                    月
+                </span>
+            </div>
 
             {/* 星期表头 */}
             {visibleDays.map((dayOfWeek, index) => {
@@ -23,19 +30,19 @@ export function WeekHeader({ dates, visibleDays }: WeekHeaderProps) {
                     <div
                         key={dayOfWeek}
                         className={cn(
-                            "flex-1 flex flex-col items-center justify-center h-14 border-r border-border/30",
-                            today && "bg-primary/10"
+                            "flex-1 flex flex-col items-center justify-center h-14",
+                            today && "bg-primary/10 rounded-lg"
                         )}
                     >
                         <span className={cn(
-                            "text-sm font-medium",
+                            "text-xs font-medium",
                             today ? "text-primary" : "text-muted-foreground"
                         )}>
                             {formatWeekdayShort(dayOfWeek)}
                         </span>
                         {date && (
                             <span className={cn(
-                                "text-lg font-semibold",
+                                "text-sm font-semibold mt-0.5",
                                 today ? "text-primary" : "text-foreground"
                             )}>
                                 {date.getDate()}

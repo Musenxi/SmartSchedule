@@ -2,7 +2,7 @@
 
 import { useSettings } from '@/hooks/use-settings';
 import { useUIStore } from '@/stores/ui-store';
-import { X } from 'lucide-react';
+import { X, LogOut } from 'lucide-react';
 
 export function SettingsModal() {
     const { settings, updateSettings, isUpdating } = useSettings();
@@ -167,6 +167,25 @@ export function SettingsModal() {
                                     <option value="light">浅色</option>
                                     <option value="dark">深色</option>
                                 </select>
+                            </div>
+                        </div>
+                    </section>
+                    {/* 账户设置 */}
+                    <section className="space-y-4">
+                        <h3 className="text-lg font-medium text-foreground/80 pb-2 border-b border-border">
+                            账户
+                        </h3>
+                        <div className="flex items-center justify-between p-3 bg-destructive/10 rounded-xl cursor-pointer hover:bg-destructive/20 transition-colors" onClick={() => {
+                            // 处理退出逻辑
+                            fetch('/api/auth/logout', { method: 'POST' }).then(() => {
+                                window.location.href = '/login';
+                            });
+                        }}>
+                            <div className="flex items-center gap-2 text-destructive">
+                                <span className="font-medium">退出登录</span>
+                            </div>
+                            <div className="text-destructive">
+                                <LogOut className="w-5 h-5" />
                             </div>
                         </div>
                     </section>

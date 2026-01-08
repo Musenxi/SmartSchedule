@@ -11,10 +11,7 @@ interface TimeGridProps {
 
 export function TimeGrid({ periods, periodHeight, showPeriodTime }: TimeGridProps) {
     return (
-        <div className="flex flex-col border-r border-border/50 bg-muted/30">
-            {/* 空白角落 */}
-            <div className="h-14 border-b border-border/50" />
-
+        <div className="flex flex-col">
             {/* 节次时间 */}
             {periods.map((period) => (
                 <div
@@ -23,7 +20,7 @@ export function TimeGrid({ periods, periodHeight, showPeriodTime }: TimeGridProp
                         "flex flex-col items-center justify-center border-b border-border/30",
                         "text-xs text-muted-foreground"
                     )}
-                    style={{ height: periodHeight, minWidth: 50 }}
+                    style={{ height: periodHeight, minWidth: 32 }}
                 >
                     <span className="font-medium text-foreground">{period.number}</span>
                     {showPeriodTime && (
