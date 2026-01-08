@@ -11,6 +11,7 @@ interface EditCourseModalProps {
     onClose: () => void;
     course: Course;
     totalWeeks?: number;
+    onSave?: () => void;
 }
 
 const COLORS = [
@@ -28,7 +29,7 @@ const WEEK_DAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '
 
 import { TimeSlotEditor } from './TimeSlotEditor';
 
-export function EditCourseModal({ isOpen, onClose, course, totalWeeks = 20 }: EditCourseModalProps) {
+export function EditCourseModal({ isOpen, onClose, course, totalWeeks = 20, onSave }: EditCourseModalProps) {
     const { updateCourse } = useCourses();
     const [loading, setLoading] = useState(false);
 
@@ -72,6 +73,7 @@ export function EditCourseModal({ isOpen, onClose, course, totalWeeks = 20 }: Ed
                     })),
                 },
             });
+            onSave?.();
             onClose();
         } catch (error) {
             console.error('Failed to update course:', error);

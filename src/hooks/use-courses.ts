@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Course } from '@/types';
+import { Course, Schedule } from '@/types';
 
 export function useCourses() {
     const queryClient = useQueryClient();
@@ -14,10 +14,35 @@ export function useCourses() {
             if (!res.ok) throw new Error('Failed to update course');
             return res.json() as Promise<Course>;
         },
-        onSuccess: (updatedCourse) => {
-            // Update schedules cache where this course might exist
+        onMutate: async ({ id, data }) => {
+            // Cancel outgoing refetches
+            await queryClient.cancelQueries({ queryKey: ['schedules'] });
+
+            // Snapshot previous value
+            const previousSchedules = queryClient.getQueryData(['schedules']);
+
+            // Optimistically update the cache
+            queryClient.setQueryData(['schedules'], (old: Schedule[] | undefined) => {
+                if (!old) return old;
+                return old.map(schedule => ({
+                    ...schedule,
+                    courses: schedule.courses?.map((course: Course) =>
+                        course.id === id ? { ...course, ...data } : course
+                    )
+                }));
+            });
+
+            return { previousSchedules };
+        },
+        onError: (err, variables, context) => {
+            // Rollback on error
+            if (context?.previousSchedules) {
+                queryClient.setQueryData(['schedules'], context.previousSchedules);
+            }
+        },
+        onSettled: () => {
+            // Always refetch after mutation settles
             queryClient.invalidateQueries({ queryKey: ['schedules'] });
-            // Also invalidate tasks if needed, but courses are mainly in schedules
         },
     });
 
@@ -29,7 +54,32 @@ export function useCourses() {
             if (!res.ok) throw new Error('Failed to delete course');
             return id;
         },
-        onSuccess: () => {
+        onMutate: async (id) => {
+            // Cancel outgoing refetches
+            await queryClient.cancelQueries({ queryKey: ['schedules'] });
+
+            // Snapshot previous value
+            const previousSchedules = queryClient.getQueryData(['schedules']);
+
+            // Optimistically remove from cache
+            queryClient.setQueryData(['schedules'], (old: Schedule[] | undefined) => {
+                if (!old) return old;
+                return old.map(schedule => ({
+                    ...schedule,
+                    courses: schedule.courses?.filter((course: Course) => course.id !== id)
+                }));
+            });
+
+            return { previousSchedules };
+        },
+        onError: (err, variables, context) => {
+            // Rollback on error
+            if (context?.previousSchedules) {
+                queryClient.setQueryData(['schedules'], context.previousSchedules);
+            }
+        },
+        onSettled: () => {
+            // Always refetch after mutation settles
             queryClient.invalidateQueries({ queryKey: ['schedules'] });
         },
     });

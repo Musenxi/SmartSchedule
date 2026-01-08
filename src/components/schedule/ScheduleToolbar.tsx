@@ -74,9 +74,15 @@ export function ScheduleToolbar({
             {/* 左侧：日期和周次 */}
             <div className="flex items-center gap-4">
                 <div>
-                    <h2 className="text-lg font-semibold text-foreground">
-                        {formatDate(today, 'yyyy/M/d')}
-                    </h2>
+                    <button
+                        onClick={() => onGoToWeek(realCurrentWeek)}
+                        className="hover:opacity-70 transition-opacity"
+                        title="点击返回今日"
+                    >
+                        <h2 className="text-lg font-semibold text-foreground text-left">
+                            {formatDate(today, 'yyyy/M/d')}
+                        </h2>
+                    </button>
                     <p className="text-sm text-muted-foreground">
                         {scheduleName}
                     </p>
@@ -271,6 +277,6 @@ export function ScheduleToolbar({
                     <ChevronRight className="w-5 h-5" />
                 </button>
             </div>
-        </div>
+        </div >
     );
 }

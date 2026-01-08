@@ -42,7 +42,20 @@ export default function SchedulePage() {
   // 侧边栏宽度状态
   const [panelWidth, setPanelWidth] = useState(360);
   const [isResizing, setIsResizing] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const resizeRef = useRef<HTMLDivElement>(null);
+
+  // 检测触屏设备
+  useEffect(() => {
+    const checkTouchDevice = () => {
+      setIsTouchDevice(
+        'ontouchstart' in window ||
+        navigator.maxTouchPoints > 0 ||
+        window.matchMedia('(pointer: coarse)').matches
+      );
+    };
+    checkTouchDevice();
+  }, []);
 
   const settings = useSettingsStore();
   const { openSettingsModal } = useUIStore();
@@ -57,8 +70,14 @@ export default function SchedulePage() {
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
   const [isCourseDetailOpen, setIsCourseDetailOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
+
+  // Derive selectedCourse from schedule.courses for fresh data
+  const selectedCourse = useMemo(() => {
+    if (!selectedCourseId || !schedule?.courses) return null;
+    return schedule.courses.find(c => c.id === selectedCourseId) || null;
+  }, [selectedCourseId, schedule?.courses]);
 
   const handleCourseClick = (course: Course, time?: CourseTime) => {
     if (course.id.startsWith('task-')) {
@@ -71,7 +90,7 @@ export default function SchedulePage() {
       }
     } else {
       // 是普通课程：打开课程详情
-      setSelectedCourse(course);
+      setSelectedCourseId(course.id);
       // Find the index of the clicked time slot
       if (time) {
         const timeIndex = course.times.findIndex(t => t.id === time.id);
@@ -103,7 +122,7 @@ export default function SchedulePage() {
 
   const handleCloseDetailModal = () => {
     setIsCourseDetailOpen(false);
-    setSelectedCourse(null);
+    setSelectedCourseId(null);
   };
 
   // 处理拖拽
@@ -118,7 +137,7 @@ export default function SchedulePage() {
     setIsSnapped(false);
   }, []);
 
-  const resize = useCallback((mouseMoveEvent: MouseEvent) => {
+  const resize = useCallback((clientX: number) => {
     if (isResizing) {
       const totalWidth = window.innerWidth;
       const minWidth = totalWidth * 0.3;
@@ -126,7 +145,7 @@ export default function SchedulePage() {
       const centerWidth = totalWidth * 0.5;
       const snapThreshold = 40; // pixels within which to snap to center
 
-      let newWidth = totalWidth - mouseMoveEvent.clientX;
+      let newWidth = totalWidth - clientX;
 
       // Snap to center when within threshold
       const nearCenter = Math.abs(newWidth - centerWidth) < snapThreshold;
@@ -151,14 +170,30 @@ export default function SchedulePage() {
     }
   }, [isResizing, isSnapped]);
 
+  // Mouse event handler
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    resize(e.clientX);
+  }, [resize]);
+
+  // Touch event handler  
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (e.touches.length > 0) {
+      resize(e.touches[0].clientX);
+    }
+  }, [resize]);
+
   useEffect(() => {
-    window.addEventListener("mousemove", resize);
+    window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", stopResizing);
+    window.addEventListener("touchmove", handleTouchMove);
+    window.addEventListener("touchend", stopResizing);
     return () => {
-      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", stopResizing);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", stopResizing);
     };
-  }, [resize, stopResizing]);
+  }, [handleMouseMove, handleTouchMove, stopResizing]);
 
   // 加载保存的布局
   useEffect(() => {
@@ -272,37 +307,41 @@ export default function SchedulePage() {
     return [...schedule.courses, ...taskCourses];
   }, [schedule, taskCourses]);
 
-  // 获取课表数据 (Mocked for brevity if file is overwritten, but I will keep the logic)
-  useEffect(() => {
-    async function fetchSchedule() {
-      try {
-        const res = await fetch('/api/schedules');
+  // 获取课表数据
+  const fetchSchedule = useCallback(async (preserveWeek = false) => {
+    try {
+      const res = await fetch('/api/schedules');
 
-        if (res.status === 401) {
-          router.push('/login');
-          return;
-        }
+      if (res.status === 401) {
+        router.push('/login');
+        return;
+      }
 
-        if (!res.ok) {
-          throw new Error('获取课表失败');
-        }
+      if (!res.ok) {
+        throw new Error('获取课表失败');
+      }
 
-        const schedules = await res.json();
+      const schedules = await res.json();
 
-        if (schedules.length > 0) {
-          const activeSchedule = schedules.find((s: ScheduleData) => s.isActive) || schedules[0];
-          setSchedule(activeSchedule);
+      if (schedules.length > 0) {
+        const activeSchedule = schedules.find((s: ScheduleData) => s.isActive) || schedules[0];
+        setSchedule(activeSchedule);
+        // Only update currentWeek on initial load, not on refresh
+        if (!preserveWeek) {
           const week = getCurrentWeek(new Date(activeSchedule.firstWeekStart));
           setCurrentWeek(Math.min(Math.max(1, week), activeSchedule.totalWeeks));
         }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : '加载失败');
-      } finally {
-        setLoading(false);
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '加载失败');
+    } finally {
+      setLoading(false);
     }
-    fetchSchedule();
   }, [router]);
+
+  useEffect(() => {
+    fetchSchedule();
+  }, [fetchSchedule]);
 
   const periods = useMemo(() => {
     if (!schedule || schedule.timeTables.length === 0) {
@@ -400,7 +439,8 @@ export default function SchedulePage() {
         <div
           ref={resizeRef}
           className={cn(
-            "hidden md:flex w-1.5 cursor-col-resize flex-col items-center justify-center z-20 transition-all duration-150",
+            "hidden md:flex cursor-col-resize flex-col items-center justify-center z-20 transition-all duration-150 touch-none",
+            isTouchDevice ? "w-4" : "w-1.5",
             isSnapped
               ? "bg-primary shadow-[0_0_12px_rgba(59,130,246,0.5)] scale-x-150"
               : isResizing
@@ -408,6 +448,7 @@ export default function SchedulePage() {
                 : "bg-border hover:bg-primary/50"
           )}
           onMouseDown={startResizing}
+          onTouchStart={startResizing}
         >
           <div className={cn(
             "h-10 w-1 rounded-full flex items-center justify-center transition-all duration-150",
@@ -496,6 +537,7 @@ export default function SchedulePage() {
           periods={periods}
           currentWeek={currentWeek}
           selectedTimeIndex={selectedTimeIndex}
+          onRefresh={() => fetchSchedule(true)}
         />
       )}
 
@@ -505,6 +547,7 @@ export default function SchedulePage() {
           onClose={handleCloseCourseModal}
           course={editingCourse}
           totalWeeks={schedule.totalWeeks}
+          onSave={() => fetchSchedule(true)}
         />
       )}
     </div>

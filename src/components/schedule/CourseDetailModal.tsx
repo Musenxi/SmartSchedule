@@ -14,9 +14,10 @@ interface CourseDetailModalProps {
     periods?: Period[];
     currentWeek?: number;
     selectedTimeIndex?: number;
+    onRefresh?: () => void;
 }
 
-export function CourseDetailModal({ isOpen, onClose, course, onEdit, periods, currentWeek = 1, selectedTimeIndex = 0 }: CourseDetailModalProps) {
+export function CourseDetailModal({ isOpen, onClose, course, onEdit, periods, currentWeek = 1, selectedTimeIndex = 0, onRefresh }: CourseDetailModalProps) {
     const { deleteCourse, updateCourse } = useCourses();
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteOptions, setShowDeleteOptions] = useState(false);
@@ -95,6 +96,7 @@ export function CourseDetailModal({ isOpen, onClose, course, onEdit, periods, cu
                     data: { times: newTimes }
                 });
             }
+            onRefresh?.();
             onClose();
         } catch (error) {
             console.error('Delete failed', error);
@@ -119,6 +121,7 @@ export function CourseDetailModal({ isOpen, onClose, course, onEdit, periods, cu
                     data: { times: newTimes }
                 });
             }
+            onRefresh?.();
             onClose();
         } catch (error) {
             console.error('Delete failed', error);
@@ -133,6 +136,7 @@ export function CourseDetailModal({ isOpen, onClose, course, onEdit, periods, cu
         setIsDeleting(true);
         try {
             await deleteCourse(course.id);
+            onRefresh?.();
             onClose();
         } catch (error) {
             console.error('Delete failed', error);
