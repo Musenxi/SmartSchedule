@@ -107,12 +107,15 @@ export default function SchedulePage() {
   };
 
   // 处理拖拽
+  const [isSnapped, setIsSnapped] = useState(false);
+
   const startResizing = useCallback(() => {
     setIsResizing(true);
   }, []);
 
   const stopResizing = useCallback(() => {
     setIsResizing(false);
+    setIsSnapped(false);
   }, []);
 
   const resize = useCallback((mouseMoveEvent: MouseEvent) => {
@@ -120,13 +123,33 @@ export default function SchedulePage() {
       const totalWidth = window.innerWidth;
       const minWidth = totalWidth * 0.3;
       const maxWidth = totalWidth * 0.7;
+      const centerWidth = totalWidth * 0.5;
+      const snapThreshold = 40; // pixels within which to snap to center
 
-      const newWidth = totalWidth - mouseMoveEvent.clientX;
+      let newWidth = totalWidth - mouseMoveEvent.clientX;
+
+      // Snap to center when within threshold
+      const nearCenter = Math.abs(newWidth - centerWidth) < snapThreshold;
+      if (nearCenter) {
+        newWidth = centerWidth;
+        if (!isSnapped) {
+          setIsSnapped(true);
+          // Haptic feedback for browsers that support it
+          if (navigator.vibrate) {
+            navigator.vibrate(10);
+          }
+        }
+      } else {
+        if (isSnapped) {
+          setIsSnapped(false);
+        }
+      }
+
       if (newWidth >= minWidth && newWidth <= maxWidth) {
         setPanelWidth(newWidth);
       }
     }
-  }, [isResizing]);
+  }, [isResizing, isSnapped]);
 
   useEffect(() => {
     window.addEventListener("mousemove", resize);
@@ -376,12 +399,24 @@ export default function SchedulePage() {
         {/* 拖拽手柄 (仅桌面端显示) */}
         <div
           ref={resizeRef}
-          className={`hidden md:flex w-1 cursor-col-resize hover:bg-primary active:bg-primary transition-colors flex-col items-center justify-center z-20 hover:shadow-glow
-                ${isResizing ? 'bg-primary shadow-glow' : 'bg-border'}`}
+          className={cn(
+            "hidden md:flex w-1.5 cursor-col-resize flex-col items-center justify-center z-20 transition-all duration-150",
+            isSnapped
+              ? "bg-primary shadow-[0_0_12px_rgba(59,130,246,0.5)] scale-x-150"
+              : isResizing
+                ? "bg-primary/80"
+                : "bg-border hover:bg-primary/50"
+          )}
           onMouseDown={startResizing}
         >
-          <div className="h-8 w-1 bg-muted-foreground/30 rounded-full flex items-center justify-center">
-            <GripVertical className="w-3 h-3 text-muted-foreground opacity-50" />
+          <div className={cn(
+            "h-10 w-1 rounded-full flex items-center justify-center transition-all duration-150",
+            isSnapped ? "bg-primary-foreground/50 scale-110" : "bg-muted-foreground/30"
+          )}>
+            <GripVertical className={cn(
+              "w-3 h-3 transition-opacity duration-150",
+              isSnapped ? "text-primary-foreground opacity-80" : "text-muted-foreground opacity-50"
+            )} />
           </div>
         </div>
 

@@ -20,6 +20,7 @@ export function CourseDetailModal({ isOpen, onClose, course, onEdit, periods, cu
     const { deleteCourse, updateCourse } = useCourses();
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteOptions, setShowDeleteOptions] = useState(false);
+    const [copySuccess, setCopySuccess] = useState(false);
 
     if (!isOpen) return null;
 
@@ -142,16 +143,54 @@ export function CourseDetailModal({ isOpen, onClose, course, onEdit, periods, cu
     };
 
     const handleCopyInfo = () => {
-        const info = `课程：${course.name}
-学分：${course.credits || 'N/A'}
+        // Create a fixed format that can be parsed for import
+        // Format: [SmartSchedule Course Export]
+        // Followed by base64-encoded JSON for machine parsing
+        // Plus human-readable text for viewing
+
+        const exportData = {
+            version: 1,
+            type: 'course',
+            data: {
+                name: course.name,
+                color: course.color,
+                credits: course.credits,
+                note: course.note || '',
+                times: course.times.map(t => ({
+                    dayOfWeek: t.dayOfWeek,
+                    startPeriod: t.startPeriod,
+                    endPeriod: t.endPeriod,
+                    weekRange: t.weekRange,
+                    teacher: t.teacher || '',
+                    location: t.location || '',
+                    startTime: t.startTime || '',
+                    endTime: t.endTime || ''
+                }))
+            }
+        };
+
+        const jsonStr = JSON.stringify(exportData);
+        const base64Data = btoa(unescape(encodeURIComponent(jsonStr)));
+
+        // Human-readable summary
+        const humanReadable = `[${course.name}]
+学分：${course.credits || '未设置'}
 ${course.times.map(t => {
-            const timeRange = getTimeRange(t.startPeriod, t.endPeriod);
-            const timeStr = timeRange ? ` ${timeRange}` : '';
-            return `时间：周${['日', '一', '二', '三', '四', '五', '六'][t.dayOfWeek]} ${t.startPeriod}-${t.endPeriod}节${timeStr} (${t.weekRange}周)
-老师：${t.teacher || '无'}
-地点：${t.location || '无'}`;
+            const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+            return `周${dayNames[t.dayOfWeek]} 第${t.startPeriod}-${t.endPeriod}节 (${t.weekRange}周)${t.teacher ? ` ${t.teacher}` : ''}${t.location ? ` @${t.location}` : ''}`;
         }).join('\n')}`;
-        navigator.clipboard.writeText(info);
+
+        // Combined format with marker
+        const exportText = `===SmartSchedule===
+${humanReadable}
+---DATA---
+${base64Data}
+===END===`;
+
+        navigator.clipboard.writeText(exportText).then(() => {
+            setCopySuccess(true);
+            setTimeout(() => setCopySuccess(false), 2000);
+        });
     };
 
     const getTimeRange = (start: number, end: number) => {
@@ -270,10 +309,27 @@ ${course.times.map(t => {
                     <div className="p-4 space-y-3 bg-card mt-auto border-t border-border">
                         <button
                             onClick={handleCopyInfo}
-                            className="w-full flex items-center gap-3 p-3 rounded-xl bg-primary/10 hover:bg-primary/20 transition-colors"
+                            disabled={copySuccess}
+                            className={cn(
+                                "w-full flex items-center justify-center gap-3 p-3 rounded-xl transition-all duration-200",
+                                copySuccess
+                                    ? "bg-green-500/20 text-green-600 dark:text-green-400"
+                                    : "bg-primary/10 hover:bg-primary/20"
+                            )}
                         >
-                            <FileText className="w-5 h-5" style={{ color: 'hsl(var(--primary))' }} />
-                            <span className="text-sm font-medium" style={{ color: 'hsl(var(--primary))' }}>复制课程信息为文本</span>
+                            {copySuccess ? (
+                                <>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <span className="text-sm font-medium">已复制到剪贴板</span>
+                                </>
+                            ) : (
+                                <>
+                                    <FileText className="w-5 h-5" style={{ color: 'hsl(var(--primary))' }} />
+                                    <span className="text-sm font-medium" style={{ color: 'hsl(var(--primary))' }}>复制课程信息为文本</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>
