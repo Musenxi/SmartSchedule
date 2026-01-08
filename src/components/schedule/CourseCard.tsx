@@ -31,7 +31,7 @@ export function CourseCard({
         borderRadius: cornerRadius,
     }), [time, periodHeight, course.color, isCurrentWeek, cornerRadius]);
 
-    const textColor = isLightColor(course.color) ? '#1f2937' : '#ffffff';
+    const textColor = '#ffffff';
 
     return (
         <div

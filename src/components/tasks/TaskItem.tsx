@@ -13,10 +13,10 @@ interface TaskItemProps {
 }
 
 const typeStyles: Record<TaskType, string> = {
-    HOMEWORK: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-    EXAM: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-    EVENT: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-    CUSTOM: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+    HOMEWORK: '!bg-transparent text-blue-700 border border-blue-400 dark:bg-blue-900/30 dark:border-transparent dark:text-blue-300',
+    EXAM: '!bg-transparent text-red-700 border border-red-400 dark:bg-red-900/30 dark:border-transparent dark:text-red-300',
+    EVENT: '!bg-transparent text-green-700 border border-green-400 dark:bg-green-900/30 dark:border-transparent dark:text-green-300',
+    CUSTOM: '!bg-transparent text-gray-700 border border-gray-400 dark:bg-gray-800 dark:border-transparent dark:text-gray-300',
 };
 
 const typeLabels: Record<TaskType, string> = {
@@ -56,7 +56,7 @@ export function TaskItem({ task, onToggle, onDelete }: TaskItemProps) {
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                     <span className={cn(
-                        "text-xs px-1.5 py-0.5 rounded-md font-medium",
+                        "text-xs px-1 py-0.5 rounded-md font-bold",
                         typeStyles[task.type]
                     )}>
                         {typeLabels[task.type]}
