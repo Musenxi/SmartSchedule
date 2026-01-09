@@ -72,6 +72,7 @@ export default function SchedulePage() {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
+  const [isTransitioningFromDetail, setIsTransitioningFromDetail] = useState(false);
 
   // Derive selectedCourse from schedule.courses for fresh data
   const selectedCourse = useMemo(() => {
@@ -105,8 +106,9 @@ export default function SchedulePage() {
   const handleEditFromDetail = () => {
     if (selectedCourse) {
       setEditingCourse(selectedCourse);
+      setIsTransitioningFromDetail(true);
       setIsCourseModalOpen(true);
-      setIsCourseDetailOpen(false);
+      // Keep detail open to provide backdrop
     }
   };
 
@@ -117,7 +119,9 @@ export default function SchedulePage() {
 
   const handleCloseCourseModal = () => {
     setIsCourseModalOpen(false);
+    setIsCourseDetailOpen(false);
     setEditingCourse(null);
+    setIsTransitioningFromDetail(false);
   };
 
   const handleCloseDetailModal = () => {
@@ -642,6 +646,8 @@ export default function SchedulePage() {
           course={editingCourse}
           totalWeeks={schedule.totalWeeks}
           onSave={() => fetchSchedule(true)}
+          disableAnimation={isTransitioningFromDetail}
+          hasBackdrop={!isTransitioningFromDetail}
         />
       )}
 

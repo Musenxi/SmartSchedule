@@ -5,6 +5,7 @@ import { X, Calendar, Clock, User, MapPin, Copy, FileText, Trash2, Pencil } from
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useCourses } from '@/hooks/use-courses';
+import { Modal } from '@/components/ui/Modal';
 
 interface CourseDetailModalProps {
     isOpen: boolean;
@@ -209,14 +210,13 @@ ${base64Data}
 
     return (
         <>
-            <div
-                onClick={onClose}
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+            <Modal
+                isOpen={isOpen}
+                onClose={onClose}
+                zIndex={50}
+                className="bg-card w-full max-w-sm max-h-[90vh] p-0 flex flex-col"
             >
-                <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-card w-full max-w-sm max-h-[90vh] flex flex-col rounded-2xl shadow-xl border border-border overflow-hidden animate-in zoom-in-95 duration-200"
-                >
+                <div className="flex flex-col h-full overflow-hidden">
                     {/* Top Bar */}
                     <div className="flex items-center justify-between p-4 pb-2">
                         <button
@@ -337,7 +337,7 @@ ${base64Data}
                         </button>
                     </div>
                 </div>
-            </div>
+            </Modal>
 
             {/* Delete Options Dialog */}
             {showDeleteOptions && (

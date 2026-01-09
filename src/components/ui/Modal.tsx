@@ -12,6 +12,7 @@ interface ModalProps {
     hasBackdrop?: boolean;
     className?: string; // For content wrapper
     zIndex?: number;
+    disableAnimation?: boolean;
 }
 
 export function Modal({
@@ -20,7 +21,8 @@ export function Modal({
     children,
     hasBackdrop = true,
     className,
-    zIndex = 50
+    zIndex = 50,
+    disableAnimation = false
 }: ModalProps) {
     const [mounted, setMounted] = useState(false);
 
@@ -57,7 +59,8 @@ export function Modal({
     return createPortal(
         <div
             className={cn(
-                "fixed inset-0 flex items-center justify-center p-4 animate-in fade-in duration-200",
+                "fixed inset-0 flex items-center justify-center p-4",
+                !disableAnimation && "animate-in fade-in duration-200",
                 hasBackdrop ? "bg-black/40 backdrop-blur-md" : "bg-transparent", // Unified frosted glass style
                 // If nested, we might want transparent backing, but Portal moves it to root.
                 // So transparent backing makes sense if we want to see the modal below.
@@ -70,7 +73,8 @@ export function Modal({
         >
             <div
                 className={cn(
-                    "w-full max-w-md bg-[#F5F5F9] dark:bg-background rounded-2xl shadow-xl border border-border overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]",
+                    "w-full max-w-md bg-card rounded-2xl shadow-xl border border-border overflow-hidden flex flex-col max-h-[85vh]",
+                    !disableAnimation && "animate-in zoom-in-95 duration-200",
                     className
                 )}
                 onClick={e => e.stopPropagation()}

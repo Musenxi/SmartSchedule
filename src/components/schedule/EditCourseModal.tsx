@@ -12,6 +12,8 @@ interface EditCourseModalProps {
     course: Course;
     totalWeeks?: number;
     onSave?: () => void;
+    disableAnimation?: boolean;
+    hasBackdrop?: boolean;
 }
 
 const COLORS = [
@@ -31,7 +33,7 @@ import { TimeSlotEditor } from './TimeSlotEditor';
 import { CourseForm } from './CourseForm';
 import { Modal } from '@/components/ui/Modal';
 
-export function EditCourseModal({ isOpen, onClose, course, totalWeeks = 20, onSave }: EditCourseModalProps) {
+export function EditCourseModal({ isOpen, onClose, course, totalWeeks = 20, onSave, disableAnimation, hasBackdrop = true }: EditCourseModalProps) {
     const { updateCourse } = useCourses();
     const [loading, setLoading] = useState(false);
 
@@ -66,7 +68,7 @@ export function EditCourseModal({ isOpen, onClose, course, totalWeeks = 20, onSa
     if (!isOpen) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} zIndex={50} hasBackdrop>
+        <Modal isOpen={isOpen} onClose={onClose} zIndex={50} hasBackdrop={hasBackdrop} disableAnimation={disableAnimation}>
             <CourseForm
                 initialData={{
                     name: course.name,
