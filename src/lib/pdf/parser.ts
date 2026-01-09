@@ -63,7 +63,8 @@ function extractCoursesFromText(text: string): {
 
     // 匹配模式：(节次)周次 / 地点 
     // 例如：(1-2)1-11 ()/ : : 5 210/
-    const courseRegex = /\((\d+-\d+)\)\s*([\d\-\,]+)\s*.*?(\d{3,4}[\/;])/g;
+    // 更新：支持(单)(双)等标记
+    const courseRegex = /\((\d+-\d+)\)\s*([^\s\/;]+?)\s*(\d{3,4}[\/;])/g;
 
     let match;
     let matchedLines = 0;
@@ -92,14 +93,27 @@ function extractCoursesFromText(text: string): {
         matchedLines++;
 
         const sectionMatch = match[1]; // 节次，如 "1-2"
-        const weeksMatch = match[2];   // 周次，如 "1-11"
+        const weeksMatch = match[2];   // 周次，如 "1-11" 或 "1-17周(单)"
         const locationMatch = match[3]; // 教室，如 "210/"
 
         // 解析节次
         const [startPeriod, endPeriod] = sectionMatch.split('-').map(Number);
 
         // 清理周次和地点
-        const weekRange = weeksMatch + '周';
+        // 移除已有的'周'字，避免重复
+        let cleanWeeks = weeksMatch.replace(/周/g, '');
+
+        // 智能格式化: 1-17(单) -> 1-17周(单)
+        let weekRange;
+        const markerMatch = cleanWeeks.match(/[\(\[\{（](单|双)[\)\]\}）]/);
+        if (markerMatch) {
+            const marker = markerMatch[0];
+            const rangePart = cleanWeeks.replace(marker, '');
+            weekRange = rangePart + '周' + marker;
+        } else {
+            weekRange = cleanWeeks + '周';
+        }
+
         const location = locationMatch.replace(/[\/;]/g, '');
 
         // 尝试在匹配位置附近查找课程名称

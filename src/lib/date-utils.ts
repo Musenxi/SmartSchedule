@@ -4,6 +4,7 @@ import {
     startOfWeek,
     endOfWeek,
     differenceInWeeks,
+    differenceInCalendarWeeks,
     isWithinInterval,
     isSameDay,
     parseISO,
@@ -17,7 +18,9 @@ export function getWeekDates(
     weekNumber: number,
     weekStartDay: number = 1 // 1=周一
 ): Date[] {
-    const weekStart = addWeeks(new Date(firstWeekStart), weekNumber - 1);
+    // 强制以该周的周一为基准计算，确保WeekHeader的[0]对应周一
+    const anchorDate = startOfWeek(new Date(firstWeekStart), { weekStartsOn: weekStartDay as 0 | 1 | 2 | 3 | 4 | 5 | 6 });
+    const weekStart = addWeeks(anchorDate, weekNumber - 1);
     const dates: Date[] = [];
 
     for (let i = 0; i < 7; i++) {
@@ -29,8 +32,8 @@ export function getWeekDates(
 
 // 计算当前周次
 export function getCurrentWeek(firstWeekStart: Date, targetDate: Date = new Date()): number {
-    const start = new Date(firstWeekStart);
-    const diffWeeks = differenceInWeeks(targetDate, start);
+    const start = startOfWeek(new Date(firstWeekStart), { weekStartsOn: 1 });
+    const diffWeeks = differenceInCalendarWeeks(targetDate, start, { weekStartsOn: 1 });
     return Math.max(1, diffWeeks + 1);
 }
 
@@ -53,23 +56,43 @@ export function formatWeekdayShort(dayOfWeek: number): string {
 }
 
 // 解析周次范围字符串
-// 支持格式: "1-16", "1,3,5,7-10", "1-8,10-16"
+// 支持格式: "1-16", "1-17周(单)", "1-17(双)", "1,3,5,7-10", "1-6周,8-10周(双)"
 export function parseWeekRange(weekRange: string): number[] {
     const weeks: Set<number> = new Set();
+    // Normalize commas and remove whitespace
+    const normalized = weekRange.replace(/，/g, ',').trim();
 
-    const parts = weekRange.split(',').map(p => p.trim());
+    // Split by comma FIRST to handle separate segments
+    const parts = normalized.split(',').map(p => p.trim()).filter(p => p);
 
     for (const part of parts) {
-        if (part.includes('-')) {
-            const [start, end] = part.split('-').map(n => parseInt(n.trim(), 10));
+        // Determine modifiers for THIS part only
+        const isOdd = part.includes('单');
+        const isEven = part.includes('双');
+
+        // Clean up the part content for number parsing
+        // Remove '周', '单', '双', and surrounding parentheses/brackets
+        let content = part.replace(/周/g, '')
+            .replace(/[\(\[\{（]单[\)\]\}）]/g, '')
+            .replace(/[\(\[\{（]双[\)\]\}）]/g, '')
+            .replace(/[单双]/g, ''); // Just in case loose characters exist
+
+        if (content.includes('-')) {
+            const [start, end] = content.split('-').map(n => parseInt(n.trim(), 10));
             if (!isNaN(start) && !isNaN(end)) {
                 for (let i = start; i <= end; i++) {
+                    // Apply filtering specific to this part
+                    if (isOdd && i % 2 === 0) continue;
+                    if (isEven && i % 2 !== 0) continue;
                     weeks.add(i);
                 }
             }
         } else {
-            const num = parseInt(part, 10);
+            const num = parseInt(content, 10);
             if (!isNaN(num)) {
+                // Apply filtering specific to this part (though less common for single numbers)
+                if (isOdd && num % 2 === 0) continue;
+                if (isEven && num % 2 !== 0) continue;
                 weeks.add(num);
             }
         }

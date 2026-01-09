@@ -1,24 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Pencil, Trash2, Check, X, Plus } from 'lucide-react';
+import { CourseForm } from '../schedule/CourseForm';
+import { Modal } from '@/components/ui/Modal';
 
-interface RecognizedCourse {
-    name: string;
-    teacher?: string;
-    location?: string;
+// Basic info common to a course
+export interface CourseTimeSlot {
     dayOfWeek: number;
     startPeriod: number;
     endPeriod: number;
     weekRange: string;
+    location?: string;
+    teacher?: string;
+}
+
+export interface RecognizedCourse {
+    name: string;
+    teacher?: string;
+    // Optional because some courses might have per-slot teachers/locations
+    location?: string;
+    times: CourseTimeSlot[];
     originalText?: string;
     confidence?: number;
 }
 
 interface CourseVerifierProps {
     courses: RecognizedCourse[];
-    onConfirm: (courses: RecognizedCourse[], options?: { newScheduleName?: string }) => void;
+    onConfirm: (courses: RecognizedCourse[], options?: {
+        newScheduleName?: string;
+        mode?: 'create' | 'add' | 'overwrite';
+        periodsPerDay?: number;
+        totalWeeks?: number;
+        startDate?: string;
+    }) => void;
     onCancel: () => void;
 }
 
@@ -29,52 +45,95 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editForm, setEditForm] = useState<RecognizedCourse | null>(null);
 
+    useEffect(() => {
+        if (editingIndex !== null) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+    }, [editingIndex]);
+
     const handleEdit = (index: number) => {
         setEditingIndex(index);
         setEditForm({ ...courses[index] });
     };
 
-    const handleSaveEdit = () => {
-        if (editingIndex !== null && editForm) {
+    const handleSaveEdit = (data: any) => {
+        if (editingIndex !== null) {
             const newCourses = [...courses];
-            newCourses[editingIndex] = editForm;
+            // Merge form data back into recognized course structure
+            // We need to map CourseForm data back to RecognizedCourse
+            newCourses[editingIndex] = {
+                ...courses[editingIndex],
+                name: data.name,
+                teacher: data.teacher,
+                times: data.times.map((t: any) => ({
+                    dayOfWeek: t.dayOfWeek,
+                    startPeriod: t.startPeriod,
+                    endPeriod: t.endPeriod,
+                    weekRange: t.weekRange,
+                    location: t.location,
+                    teacher: t.teacher
+                }))
+            };
             setCourses(newCourses);
             setEditingIndex(null);
-            setEditForm(null);
         }
     };
 
     const handleCancelEdit = () => {
         setEditingIndex(null);
-        setEditForm(null);
     };
 
     const handleDelete = (index: number) => {
         setCourses(courses.filter((_, i) => i !== index));
+        if (editingIndex === index) {
+            setEditingIndex(null);
+            setEditForm(null);
+        }
     };
 
     const handleAddNew = () => {
         const newCourse: RecognizedCourse = {
             name: '新课程',
-            dayOfWeek: 1,
-            startPeriod: 1,
-            endPeriod: 2,
-            weekRange: '1-16周',
+            times: [{
+                dayOfWeek: 1,
+                startPeriod: 1,
+                endPeriod: 2,
+                weekRange: '1-16',
+            }]
         };
         setCourses([...courses, newCourse]);
+        // Immediately open edit for the new course
         setEditingIndex(courses.length);
-        setEditForm(newCourse);
     };
 
-    const [importMode, setImportMode] = useState<'current' | 'new'>('current');
+    const [importMode, setImportMode] = useState<'create' | 'add' | 'overwrite'>('create');
     const [newScheduleName, setNewScheduleName] = useState('');
+    const [periodsPerDay, setPeriodsPerDay] = useState(12);
+    const [totalWeeks, setTotalWeeks] = useState(20);
+    const [startDate, setStartDate] = useState(() => {
+        const d = new Date();
+        // Default to this week's Monday
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(d.setDate(diff));
+        return monday.toISOString().split('T')[0];
+    });
 
     const handleConfirm = () => {
-        if (importMode === 'new' && !newScheduleName.trim()) {
+        if (importMode === 'create' && !newScheduleName.trim()) {
             alert('请输入新课表名称');
             return;
         }
-        onConfirm(courses, importMode === 'new' ? { newScheduleName } : undefined);
+        onConfirm(courses, {
+            newScheduleName: importMode === 'create' ? newScheduleName : undefined,
+            mode: importMode,
+            periodsPerDay: importMode === 'create' ? periodsPerDay : undefined,
+            totalWeeks: importMode === 'create' ? totalWeeks : undefined,
+            startDate: importMode === 'create' ? startDate : undefined
+        });
     };
 
     return (
@@ -92,123 +151,76 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
                 </button>
             </div>
 
-            <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+            <div className="space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
                 {courses.map((course, index) => (
                     <div
                         key={index}
                         className={cn(
-                            "p-3 rounded-lg border transition-colors",
-                            editingIndex === index ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-muted/30"
+                            "p-4 rounded-xl border transition-all border-border bg-card hover:bg-muted/30"
                         )}
                     >
-                        {editingIndex === index && editForm ? (
-                            <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input
-                                        type="text"
-                                        value={editForm.name}
-                                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                                        placeholder="课程名称"
-                                        className="px-2 py-1 text-sm border border-input rounded bg-background"
-                                    />
-                                    <input
-                                        type="text"
-                                        value={editForm.teacher || ''}
-                                        onChange={(e) => setEditForm({ ...editForm, teacher: e.target.value })}
-                                        placeholder="教师"
-                                        className="px-2 py-1 text-sm border border-input rounded bg-background"
-                                    />
+                        <div className="flex items-start justify-between">
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-foreground text-lg">{course.name}</span>
+                                    {course.teacher && <span className="text-sm text-muted-foreground px-2 py-0.5 bg-muted rounded-full">{course.teacher}</span>}
+                                    {course.confidence !== undefined && course.confidence < 0.8 && (
+                                        <span className="text-xs px-1.5 py-0.5 bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded">需确认</span>
+                                    )}
                                 </div>
-                                <div className="grid grid-cols-4 gap-2">
-                                    <select
-                                        value={editForm.dayOfWeek}
-                                        onChange={(e) => setEditForm({ ...editForm, dayOfWeek: parseInt(e.target.value) })}
-                                        className="px-2 py-1 text-sm border border-input rounded bg-background"
-                                    >
-                                        {[1, 2, 3, 4, 5, 6, 7].map(d => (
-                                            <option key={d} value={d}>{DAY_LABELS[d]}</option>
-                                        ))}
-                                    </select>
-                                    <input
-                                        type="number"
-                                        value={editForm.startPeriod}
-                                        onChange={(e) => setEditForm({ ...editForm, startPeriod: parseInt(e.target.value) || 1 })}
-                                        placeholder="开始节"
-                                        min={1}
-                                        max={12}
-                                        className="px-2 py-1 text-sm border border-input rounded bg-background"
-                                    />
-                                    <input
-                                        type="number"
-                                        value={editForm.endPeriod}
-                                        onChange={(e) => setEditForm({ ...editForm, endPeriod: parseInt(e.target.value) || 2 })}
-                                        placeholder="结束节"
-                                        min={1}
-                                        max={12}
-                                        className="px-2 py-1 text-sm border border-input rounded bg-background"
-                                    />
-                                    <input
-                                        type="text"
-                                        value={editForm.weekRange}
-                                        onChange={(e) => setEditForm({ ...editForm, weekRange: e.target.value })}
-                                        placeholder="周次"
-                                        className="px-2 py-1 text-sm border border-input rounded bg-background"
-                                    />
-                                </div>
-                                <input
-                                    type="text"
-                                    value={editForm.location || ''}
-                                    onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
-                                    placeholder="上课地点"
-                                    className="w-full px-2 py-1 text-sm border border-input rounded bg-background"
-                                />
-                                <div className="flex justify-end gap-2">
-                                    <button onClick={handleCancelEdit} className="p-1.5 text-muted-foreground hover:text-foreground rounded">
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                    <button onClick={handleSaveEdit} className="p-1.5 text-primary hover:bg-primary/10 rounded">
-                                        <Check className="w-4 h-4" />
-                                    </button>
+                                <div className="flex flex-wrap gap-2">
+                                    {course.times?.map((time, tIndex) => (
+                                        <div key={tIndex} className="text-xs text-muted-foreground bg-muted/50 px-2 py-1.5 rounded-md flex items-center gap-2 border border-border/50">
+                                            <span className="font-medium text-foreground">{DAY_LABELS[time.dayOfWeek]}</span>
+                                            <span>{time.startPeriod}-{time.endPeriod}节</span>
+                                            <span className="text-primary/80 font-medium">{time.weekRange}</span>
+                                            {time.location && <span className="text-muted-foreground">@{time.location}</span>}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        ) : (
-                            <div className="flex items-start justify-between">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-medium text-foreground">{course.name}</span>
-                                        {course.confidence !== undefined && course.confidence < 0.8 && (
-                                            <span className="text-xs px-1.5 py-0.5 bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded">
-                                                待确认
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground space-x-2">
-                                        <span>{DAY_LABELS[course.dayOfWeek]}</span>
-                                        <span>第{course.startPeriod}-{course.endPeriod}节</span>
-                                        <span>{course.weekRange}</span>
-                                        {course.location && <span>@{course.location}</span>}
-                                        {course.teacher && <span>({course.teacher})</span>}
-                                    </div>
-                                </div>
-                                <div className="flex gap-1">
-                                    <button
-                                        onClick={() => handleEdit(index)}
-                                        className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
-                                    >
-                                        <Pencil className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(index)}
-                                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
+                            <div className="flex gap-1 pl-4">
+                                <button
+                                    onClick={() => handleEdit(index)}
+                                    className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                    title="编辑"
+                                >
+                                    <Pencil className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(index)}
+                                    className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                                    title="删除"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
                             </div>
-                        )}
+                        </div>
                     </div>
                 ))}
             </div>
+
+            {/* Edit Modal Overlay */}
+            {editingIndex !== null && courses[editingIndex] && (
+                <Modal
+                    isOpen={true}
+                    onClose={handleCancelEdit}
+                    zIndex={60} // Slightly higher than default just in case, though 50 is default for Modal
+                >
+                    <CourseForm
+                        initialData={{
+                            name: courses[editingIndex].name,
+                            teacher: courses[editingIndex].teacher,
+                            times: courses[editingIndex].times.map(t => ({ ...t, id: crypto.randomUUID(), courseId: '' })),
+                            color: '#3B82F6',
+                            credits: 0,
+                            note: ''
+                        }}
+                        onSubmit={handleSaveEdit}
+                        onCancel={handleCancelEdit}
+                    />
+                </Modal>
+            )}
 
             {courses.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
@@ -224,9 +236,20 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
                         <input
                             type="radio"
                             name="importMode"
-                            value="current"
-                            checked={importMode === 'current'}
-                            onChange={() => setImportMode('current')}
+                            value="create"
+                            checked={importMode === 'create'}
+                            onChange={() => setImportMode('create')}
+                            className="w-4 h-4 text-primary"
+                        />
+                        创建新课表
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                            type="radio"
+                            name="importMode"
+                            value="add"
+                            checked={importMode === 'add'}
+                            onChange={() => setImportMode('add')}
                             className="w-4 h-4 text-primary"
                         />
                         添加到当前课表
@@ -235,24 +258,57 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
                         <input
                             type="radio"
                             name="importMode"
-                            value="new"
-                            checked={importMode === 'new'}
-                            onChange={() => setImportMode('new')}
+                            value="overwrite"
+                            checked={importMode === 'overwrite'}
+                            onChange={() => setImportMode('overwrite')}
                             className="w-4 h-4 text-primary"
                         />
-                        创建新课表
+                        覆盖当前课表
                     </label>
                 </div>
-                {importMode === 'new' && (
-                    <div className="animate-in slide-in-from-top-2 duration-200">
+                {importMode === 'create' && (
+                    <div className="animate-in slide-in-from-top-2 duration-200 space-y-3 pt-2">
                         <input
                             type="text"
                             value={newScheduleName}
                             onChange={(e) => setNewScheduleName(e.target.value)}
-                            placeholder="请输入新课表名称 (如: 大三下学期)"
+                            placeholder="请输入课表名称"
                             className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:ring-1 focus:ring-primary outline-none"
                             autoFocus
                         />
+                        <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground">开学日期</label>
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:ring-1 focus:ring-primary outline-none"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground">每天节数</label>
+                                <input
+                                    type="number"
+                                    min={4}
+                                    max={20}
+                                    value={periodsPerDay}
+                                    onChange={(e) => setPeriodsPerDay(parseInt(e.target.value) || 12)}
+                                    className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:ring-1 focus:ring-primary outline-none"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground">学期周数</label>
+                                <input
+                                    type="number"
+                                    min={10}
+                                    max={30}
+                                    value={totalWeeks}
+                                    onChange={(e) => setTotalWeeks(parseInt(e.target.value) || 20)}
+                                    className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:ring-1 focus:ring-primary outline-none"
+                                />
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
@@ -269,7 +325,7 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
                     disabled={courses.length === 0}
                     className="flex-1 py-2.5 bg-primary text-primary-foreground font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                    {importMode === 'new' ? '创建并导入' : '确认导入'}
+                    {importMode === 'create' ? '创建并导入' : (importMode === 'overwrite' ? '覆盖并导入' : '确认导入')}
                 </button>
             </div>
         </div>

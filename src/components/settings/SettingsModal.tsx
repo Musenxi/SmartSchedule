@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useSettings } from '@/hooks/use-settings';
 import { useUIStore } from '@/stores/ui-store';
-import { X, LogOut, Clock, ChevronRight } from 'lucide-react';
+import { X, LogOut, Clock, ChevronRight, LayoutTemplate } from 'lucide-react';
 import { Schedule, TimeTable } from '@/types';
 import { TimeTableListModal } from '../schedule/TimeTableListModal';
+import { AppearanceSettingsModal } from './AppearanceSettingsModal';
 
 interface SettingsModalProps {
     currentSchedule?: Schedule;
@@ -16,6 +17,7 @@ export function SettingsModal({ currentSchedule, timeTables = [], onScheduleUpda
     const { settings, updateSettings, isUpdating } = useSettings();
     const { settingsModalOpen, closeSettingsModal } = useUIStore();
     const [isTimeListOpen, setIsTimeListOpen] = useState(false);
+    const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
 
     if (!settingsModalOpen || !settings) return null;
 
@@ -70,122 +72,31 @@ export function SettingsModal({ currentSchedule, timeTables = [], onScheduleUpda
                                     <ChevronRight className="w-5 h-5 text-muted-foreground" />
                                 </div>
                             </div>
+
+                            <div
+                                className="flex items-center justify-between p-4 bg-muted/30 rounded-xl cursor-pointer hover:bg-muted/50 transition-colors"
+                                onClick={() => setIsAppearanceOpen(true)}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                        <LayoutTemplate className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <div className="font-medium">外观显示设置</div>
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                            自定义课表样式和布局
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="text-xs text-primary font-medium">设置</div>
+                                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                            </div>
                         </section>
                     )}
 
-                    {/* 外观设置 */}
-                    <section className="space-y-4">
-                        <h3 className="text-lg font-medium text-foreground/80 pb-2 border-b border-border">
-                            外观显示
-                        </h3>
-                        {/* ... existing appearance settings ... */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
-                                <div>
-                                    <div className="font-medium">显示网格辅助线</div>
-                                    <div className="text-xs text-muted-foreground mt-1">显示课程格子的分隔线</div>
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    className="toggle"
-                                    checked={settings.showGridLines}
-                                    onChange={(e) => updateSettings({ showGridLines: e.target.checked })}
-                                />
-                            </div>
 
-                            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
-                                <div>
-                                    <div className="font-medium">显示节次时间</div>
-                                    <div className="text-xs text-muted-foreground mt-1">在左侧显示每节课的具体时间</div>
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    className="toggle"
-                                    checked={settings.showPeriodTime}
-                                    onChange={(e) => updateSettings({ showPeriodTime: e.target.checked })}
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
-                                <div>
-                                    <div className="font-medium">显示周六</div>
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    className="toggle"
-                                    checked={settings.showSaturday}
-                                    onChange={(e) => updateSettings({ showSaturday: e.target.checked })}
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
-                                <div>
-                                    <div className="font-medium">显示周日</div>
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    className="toggle"
-                                    checked={settings.showSunday}
-                                    onChange={(e) => updateSettings({ showSunday: e.target.checked })}
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
-                                <div>
-                                    <div className="font-medium">显示非本周课程</div>
-                                    <div className="text-xs text-muted-foreground mt-1">非当前周的课程将以灰色显示</div>
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    className="toggle"
-                                    checked={settings.showNonCurrentWeek}
-                                    onChange={(e) => updateSettings({ showNonCurrentWeek: e.target.checked })}
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
-                                <div>
-                                    <div className="font-medium">使用纯色背景</div>
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    className="toggle"
-                                    checked={settings.useSolidBackground}
-                                    onChange={(e) => updateSettings({ useSolidBackground: e.target.checked })}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-4 pt-2">
-                            <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="text-sm font-medium">课程卡片圆角 ({settings.courseCornerRadius}px)</label>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="20"
-                                    value={settings.courseCornerRadius}
-                                    onChange={(e) => updateSettings({ courseCornerRadius: parseInt(e.target.value) })}
-                                    className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-                                />
-                            </div>
-
-                            <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="text-sm font-medium">每节课高度 ({settings.periodHeight}px)</label>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="30"
-                                    max="80"
-                                    value={settings.periodHeight}
-                                    onChange={(e) => updateSettings({ periodHeight: parseInt(e.target.value) })}
-                                    className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-                                />
-                            </div>
-                        </div>
-                    </section>
 
                     {/* 通用设置 */}
                     <section className="space-y-4">
@@ -256,6 +167,12 @@ export function SettingsModal({ currentSchedule, timeTables = [], onScheduleUpda
                     }}
                 />
             )}
+
+            {/* Nested Appearance Settings Modal */}
+            <AppearanceSettingsModal
+                isOpen={isAppearanceOpen}
+                onClose={() => setIsAppearanceOpen(false)}
+            />
         </div>
     );
 }

@@ -65,12 +65,13 @@ export function parseAcademicHTML(html: string): RecognizedCourse[] {
                         }
 
                         // Parse Week Range (heuristic)
-                        // This is complex as it can be "7周,14周" or "1-16周"
                         const weekMatch = timeText.match(/\)(.+)$/);
                         if (weekMatch) {
                             weekRange = weekMatch[1].trim();
                         } else {
-                            weekRange = timeText;
+                            // Fallback: Remove the section part (e.g. (1-2节)) and trim
+                            // Do NOT aggressively remove '周' globaly as it destroys context for comma-separated lists
+                            weekRange = timeText.replace(/[\(\)0-9\-]+节/, '').trim();
                         }
                     }
                 });

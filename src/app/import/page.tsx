@@ -9,14 +9,49 @@ import { ArrowLeft, CheckCircle2, FileText, FileSpreadsheet, Globe, PencilLine, 
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
-interface RecognizedCourse {
-    name: string;
-    teacher?: string;
-    location?: string;
+interface CourseTimeSlot {
     dayOfWeek: number;
     startPeriod: number;
     endPeriod: number;
     weekRange: string;
+    teacher?: string;
+    location?: string;
+}
+
+interface RecognizedCourse {
+    name: string;
+    teacher?: string;
+    location?: string;
+    times: CourseTimeSlot[];
+}
+
+// Helper to group flat courses by name
+function groupCourses(flatCourses: any[]): RecognizedCourse[] {
+    const groupedMap = new Map<string, RecognizedCourse>();
+
+    flatCourses.forEach(c => {
+        const name = c.name;
+        if (!groupedMap.has(name)) {
+            groupedMap.set(name, {
+                name: name,
+                teacher: c.teacher, // Use first occurrence's teacher as default
+                location: c.location,
+                times: []
+            });
+        }
+
+        const course = groupedMap.get(name)!;
+        course.times.push({
+            dayOfWeek: c.dayOfWeek,
+            startPeriod: c.startPeriod,
+            endPeriod: c.endPeriod,
+            weekRange: c.weekRange,
+            teacher: c.teacher,
+            location: c.location
+        });
+    });
+
+    return Array.from(groupedMap.values());
 }
 
 type Step = 'select' | 'upload' | 'verify' | 'success';
@@ -30,13 +65,23 @@ export default function ImportPage() {
     const [saving, setSaving] = useState(false);
 
     const handleUploadComplete = (data: any) => {
-        setResult(data);
         if (data.courses && data.courses.length > 0) {
+            // Group flat courses into structured courses
+            const grouped = groupCourses(data.courses);
+            setResult({ ...data, courses: grouped });
             setStep('verify');
+        } else {
+            setResult(data);
         }
     };
 
-    const handleConfirmCourses = async (courses: RecognizedCourse[], options?: { newScheduleName?: string }) => {
+    const handleConfirmCourses = async (courses: RecognizedCourse[], options?: {
+        newScheduleName?: string;
+        mode?: 'create' | 'add' | 'overwrite';
+        periodsPerDay?: number;
+        totalWeeks?: number;
+        startDate?: string;
+    }) => {
         setSaving(true);
         try {
             const res = await fetch('/api/upload/confirm', {
@@ -44,7 +89,11 @@ export default function ImportPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     courses,
-                    newScheduleName: options?.newScheduleName
+                    newScheduleName: options?.newScheduleName,
+                    mode: options?.mode,
+                    periodsPerDay: options?.periodsPerDay,
+                    totalWeeks: options?.totalWeeks,
+                    startDate: options?.startDate
                 }),
             });
 

@@ -86,6 +86,41 @@ export function WeekView({
             }
         }
 
+        // Post-processing: Filter out non-current week courses if they overlap perfectly with current week courses
+        if (showNonCurrentWeek) {
+            for (const day of visibleDays) {
+                const dayCourses = result[day];
+                const newDayCourses: typeof dayCourses = [];
+
+                // Group by time slots to find overlaps
+                // Simple version: check for exact period match or overlap
+                // Since grid logic is complex, we'll do a simpler distinct check:
+                // If a non-current-week course occupies the SAME period as a current-week course, hide it.
+
+                for (const item of dayCourses) {
+                    const isCurrent = isWeekInRange(currentWeek, item.time.weekRange);
+
+                    if (!isCurrent) {
+                        // Check if there is ANY current week course that overlaps with this one
+                        const hasOverlap = dayCourses.some(other => {
+                            if (other === item) return false;
+                            const otherIsCurrent = isWeekInRange(currentWeek, other.time.weekRange);
+                            if (!otherIsCurrent) return false;
+
+                            // Check period overlap
+                            const overlap = Math.max(item.time.startPeriod, other.time.startPeriod) <= Math.min(item.time.endPeriod, other.time.endPeriod);
+                            return overlap;
+                        });
+
+                        if (hasOverlap) continue; // Skip this non-current course because it overlaps with a current one
+                    }
+
+                    newDayCourses.push(item);
+                }
+                result[day] = newDayCourses;
+            }
+        }
+
         return result;
     }, [courses, visibleDays, currentWeek, showNonCurrentWeek]);
 

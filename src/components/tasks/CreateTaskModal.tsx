@@ -17,7 +17,7 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [type, setType] = useState<TaskType>('HOMEWORK');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
     const [showInSchedule, setShowInSchedule] = useState(true);
     const [location, setLocation] = useState('');
 
@@ -66,7 +66,7 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                 setTitle('');
                 setDescription('');
                 setType('HOMEWORK');
-                setDate(new Date().toISOString().split('T')[0]);
+                setDate(format(new Date(), 'yyyy-MM-dd'));
                 setStartTime('08:00');
                 setEndTime('10:00');
                 setLocation('');
@@ -168,7 +168,8 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                                 type="date"
                                 value={date}
                                 onChange={(e) => setDate(e.target.value)}
-                                className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-input outline-none text-foreground"
+                                onClick={(e) => e.currentTarget.showPicker()}
+                                className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-input outline-none text-foreground cursor-pointer"
                                 required
                             />
                         </div>

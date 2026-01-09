@@ -350,8 +350,26 @@ export default function SchedulePage() {
     }
   }, []);
 
-  const handleScheduleChange = useCallback((scheduleId: string) => {
-    fetchSchedule(false, scheduleId);
+  const handleScheduleChange = useCallback(async (scheduleId: string) => {
+    try {
+      // 1. Optimistic update (optional, but fetchSchedule will handle UI)
+
+      // 2. Persist active state to backend
+      const res = await fetch(`/api/schedules/${scheduleId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: true }),
+      });
+
+      if (!res.ok) throw new Error('Failed to switch schedule');
+
+      // 3. Refresh all data to reflect the new active state (server handles deactivating others)
+      fetchSchedule(false, scheduleId);
+    } catch (error) {
+      console.error('Switch schedule error:', error);
+      // Fallback: just try to load it anyway for viewing
+      fetchSchedule(false, scheduleId);
+    }
   }, [fetchSchedule]);
 
   const handleEditSchedule = (scheduleId: string) => {

@@ -3,14 +3,20 @@ import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
 import { getRandomColor } from '@/lib/color-utils';
 
-interface CourseInput {
-    name: string;
-    teacher?: string;
-    location?: string;
+interface CourseTimeSlot {
     dayOfWeek: number;
     startPeriod: number;
     endPeriod: number;
     weekRange: string;
+    teacher?: string;
+    location?: string;
+}
+
+interface CourseInput {
+    name: string;
+    teacher?: string;
+    location?: string;
+    times: CourseTimeSlot[];
 }
 
 export async function POST(req: NextRequest) {
@@ -20,10 +26,14 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        const { courses, scheduleId, newScheduleName }: {
+        const { courses, scheduleId, newScheduleName, mode, periodsPerDay, totalWeeks, startDate }: {
             courses: CourseInput[];
             scheduleId?: string;
             newScheduleName?: string;
+            mode?: 'create' | 'add' | 'overwrite';
+            periodsPerDay?: number;
+            totalWeeks?: number;
+            startDate?: string;
         } = await req.json();
 
         if (!courses || courses.length === 0) {
@@ -32,8 +42,8 @@ export async function POST(req: NextRequest) {
 
         let targetScheduleId = scheduleId;
 
-        // 如果只有 newScheduleName，说明要创建新课表
-        if (newScheduleName) {
+        // 如果 mode 是 create 或者只有 newScheduleName (兼容旧逻辑)，说明要创建新课表
+        if (mode === 'create' || (!mode && newScheduleName)) {
             // 1. 如果新课表需要设为 active，则需将用户的其他课表设为 inactive
             await prisma.schedule.updateMany({
                 where: { userId: user.userId, isActive: true },
@@ -42,17 +52,29 @@ export async function POST(req: NextRequest) {
 
             // 2. 创建新课表
             const today = new Date();
-            const day = today.getDay();
-            const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-            const monday = new Date(today.setDate(diff));
-            monday.setHours(0, 0, 0, 0);
+            let firstWeekStart: Date;
+
+            if (startDate) {
+                // If user provided startDate, use it directly (assuming it's formatted YYYY-MM-DD or similar)
+                firstWeekStart = new Date(startDate);
+                // Ensure it's treated as start of day local time or simply store as date
+                firstWeekStart.setHours(0, 0, 0, 0);
+            } else {
+                // Fallback: This week's Monday
+                const day = today.getDay();
+                const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+                firstWeekStart = new Date(today.setDate(diff));
+                firstWeekStart.setHours(0, 0, 0, 0);
+            }
 
             const newSchedule = await prisma.schedule.create({
                 data: {
                     userId: user.userId,
-                    name: newScheduleName,
-                    firstWeekStart: monday,
+                    name: newScheduleName || '新课表',
+                    firstWeekStart: firstWeekStart,
                     isActive: true,
+                    periodsPerDay: periodsPerDay || 12,
+                    totalWeeks: totalWeeks || 20,
                 },
             });
             targetScheduleId = newSchedule.id;
@@ -154,6 +176,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Target schedule not determined' }, { status: 500 });
         }
 
+        // 如果是覆盖模式，删除该课表下的所有课程
+        if (mode === 'overwrite') {
+            await prisma.course.deleteMany({
+                where: { scheduleId: targetScheduleId }
+            });
+        }
+
+        // 批量创建课程
         // 批量创建课程
         const createdCourses = await prisma.$transaction(
             courses.map((course) =>
@@ -162,15 +192,16 @@ export async function POST(req: NextRequest) {
                         scheduleId: targetScheduleId!,
                         name: course.name,
                         color: getRandomColor(),
+                        // teacher/location are stored in CourseTime
                         times: {
-                            create: {
-                                dayOfWeek: course.dayOfWeek,
-                                startPeriod: course.startPeriod,
-                                endPeriod: course.endPeriod,
-                                weekRange: course.weekRange,
-                                teacher: course.teacher,
-                                location: course.location,
-                            },
+                            create: course.times.map(time => ({
+                                dayOfWeek: time.dayOfWeek,
+                                startPeriod: time.startPeriod,
+                                endPeriod: time.endPeriod,
+                                weekRange: time.weekRange,
+                                teacher: time.teacher,
+                                location: time.location,
+                            })),
                         },
                     },
                     include: { times: true },

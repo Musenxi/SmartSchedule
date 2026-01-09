@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { getAuthUser } from '@/lib/auth';
 
 const updateScheduleSchema = z.object({
     name: z.string().min(1).max(50).optional(),
@@ -59,9 +60,34 @@ export async function PUT(
     { params }: RouteParams
 ) {
     try {
+        const user = getAuthUser(request);
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { id } = await params;
         const body = await request.json();
         const validated = updateScheduleSchema.parse(body);
+
+        // Verify ownership and existence
+        const existingSchedule = await prisma.schedule.findUnique({
+            where: { id },
+        });
+
+        if (!existingSchedule || existingSchedule.userId !== user.userId) {
+            return NextResponse.json({ error: 'Schedule not found or unauthorized' }, { status: 404 });
+        }
+
+        // If setting to active, deactivate others first
+        if (validated.isActive) {
+            await prisma.schedule.updateMany({
+                where: {
+                    userId: user.userId,
+                    id: { not: id }
+                },
+                data: { isActive: false }
+            });
+        }
 
         const schedule = await prisma.schedule.update({
             where: { id },
