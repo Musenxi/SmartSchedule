@@ -2,9 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Pencil, Trash2, Check, X, Plus } from 'lucide-react';
+import { Pencil, Trash2, Check, X, Plus, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CourseForm } from '../schedule/CourseForm';
 import { Modal } from '@/components/ui/Modal';
+import { format, startOfWeek, addDays } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 
 // Basic info common to a course
 export interface CourseTimeSlot {
@@ -121,6 +128,27 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
         const monday = new Date(d.setDate(diff));
         return monday.toISOString().split('T')[0];
     });
+
+    // Manual Calendar State
+    const [selectedMonth, setSelectedMonth] = useState(() => new Date());
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+    // Generate calendar days
+    const generateCalendarDays = () => {
+        const year = selectedMonth.getFullYear();
+        const month = selectedMonth.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const startDay = startOfWeek(firstDay, { weekStartsOn: 1 }); // Monday start
+
+        const days: Date[] = [];
+        let current = startDay;
+        while (days.length < 42) {
+            days.push(new Date(current));
+            current = addDays(current, 1);
+        }
+        return days;
+    };
+    const calendarDays = generateCalendarDays();
 
     const handleConfirm = () => {
         if (importMode === 'create' && !newScheduleName.trim()) {
@@ -278,12 +306,97 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
                         />
                         <div className="space-y-1">
                             <label className="text-xs text-muted-foreground">开学日期</label>
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:ring-1 focus:ring-primary outline-none"
-                            />
+                            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <button
+                                        type="button"
+                                        className={cn(
+                                            "w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:ring-1 focus:ring-primary outline-none text-left flex items-center gap-2",
+                                            !startDate && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+                                        {startDate ? format(new Date(startDate), 'yyyy年M月d日', { locale: zhCN }) : '选择日期'}
+                                    </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-2 z-[100]" align="center" sideOffset={8}>
+                                    <div className="w-[230px]">
+                                        {/* Month Navigation */}
+                                        <div className="flex items-center justify-between mb-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1))}
+                                                className="p-1 hover:bg-muted rounded-md transition-colors"
+                                            >
+                                                <ChevronLeft className="w-3 h-3" />
+                                            </button>
+                                            <span className="text-sm font-medium">
+                                                {format(selectedMonth, 'yyyy年M月', { locale: zhCN })}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1))}
+                                                className="p-1 hover:bg-muted rounded-md transition-colors"
+                                            >
+                                                <ChevronRight className="w-3 h-3" />
+                                            </button>
+                                        </div>
+
+                                        {/* Weekday Header */}
+                                        <div className="grid grid-cols-7 gap-0.5 mb-1">
+                                            {['一', '二', '三', '四', '五', '六', '日'].map((day) => (
+                                                <div key={day} className="text-center text-[10px] text-muted-foreground py-0.5">
+                                                    {day}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Date Grid */}
+                                        <div className="grid grid-cols-7 gap-0.5">
+                                            {calendarDays.map((day, index) => {
+                                                const isCurrentMonth = day.getMonth() === selectedMonth.getMonth();
+                                                const isToday = day.toDateString() === new Date().toDateString();
+                                                const isSelected = startDate === format(day, 'yyyy-MM-dd');
+
+                                                return (
+                                                    <button
+                                                        key={index}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setStartDate(format(day, 'yyyy-MM-dd'));
+                                                            setIsPopoverOpen(false);
+                                                        }}
+                                                        className={cn(
+                                                            "w-full aspect-square rounded-md text-xs font-medium transition-all flex items-center justify-center",
+                                                            !isCurrentMonth && "text-muted-foreground/40",
+                                                            isCurrentMonth && "text-foreground hover:bg-muted",
+                                                            isSelected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+                                                            !isSelected && isToday && "bg-secondary text-secondary-foreground"
+                                                        )}
+                                                    >
+                                                        {day.getDate()}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className="mt-2 pt-2 border-t border-border">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const today = new Date();
+                                                    setStartDate(format(today, 'yyyy-MM-dd'));
+                                                    setSelectedMonth(today);
+                                                    setIsPopoverOpen(false);
+                                                }}
+                                                className="w-full py-1.5 text-xs text-primary hover:bg-primary/10 rounded-lg transition-colors font-medium"
+                                            >
+                                                跳转到今天
+                                            </button>
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
