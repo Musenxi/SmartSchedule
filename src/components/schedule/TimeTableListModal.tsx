@@ -5,6 +5,7 @@ import { X, Plus, Trash2, Check, ChevronRight, Clock } from 'lucide-react';
 import { Schedule, TimeTable } from '@/types';
 import { cn } from '@/lib/utils';
 import { TimeTableEditorModal } from './TimeTableEditorModal';
+import { TimeTableSwitchConfigModal } from './TimeTableSwitchConfigModal';
 
 interface TimeTableListModalProps {
     schedule: Schedule;
@@ -14,6 +15,21 @@ interface TimeTableListModalProps {
     onScheduleUpdate: (id: string, data: Partial<Schedule>) => Promise<void>;
     onTimeTablesRefresh: () => Promise<void>;
 }
+
+const getDefaultPeriods = () => {
+    return [
+        { id: 't1', timeTableId: 'new', number: 1, startTime: '08:00', endTime: '08:45' },
+        { id: 't2', timeTableId: 'new', number: 2, startTime: '08:55', endTime: '09:40' },
+        { id: 't3', timeTableId: 'new', number: 3, startTime: '10:00', endTime: '10:45' },
+        { id: 't4', timeTableId: 'new', number: 4, startTime: '10:55', endTime: '11:40' },
+        { id: 't5', timeTableId: 'new', number: 5, startTime: '14:00', endTime: '14:45' },
+        { id: 't6', timeTableId: 'new', number: 6, startTime: '14:55', endTime: '15:40' },
+        { id: 't7', timeTableId: 'new', number: 7, startTime: '16:00', endTime: '16:45' },
+        { id: 't8', timeTableId: 'new', number: 8, startTime: '16:55', endTime: '17:40' },
+        { id: 't9', timeTableId: 'new', number: 9, startTime: '19:00', endTime: '19:45' },
+        { id: 't10', timeTableId: 'new', number: 10, startTime: '19:55', endTime: '20:40' },
+    ];
+};
 
 export function TimeTableListModal({
     schedule,
@@ -28,6 +44,9 @@ export function TimeTableListModal({
     const [isCreating, setIsCreating] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [optimisticActiveId, setOptimisticActiveId] = useState<string | null>(null);
+    const [isConfigOpen, setIsConfigOpen] = useState(false);
+    const [toggling, setToggling] = useState(false);
+    const [isPendingEnable, setIsPendingEnable] = useState(false);
 
     // Determine active ID: optimistic > server > default
     const activeId = optimisticActiveId || schedule.activeTimeTableId || timeTables.find(t => t.isDefault)?.id;
@@ -51,32 +70,20 @@ export function TimeTableListModal({
 
     if (!isOpen) return null;
 
-    const handleCreate = async () => {
-        setIsCreating(true);
-        try {
-            // Use user-level API
-            const res = await fetch('/api/timetables', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: '新时间表' })
-            });
-
-            if (!res.ok) throw new Error('Create failed');
-
-            const newTimeTable = await res.json();
-
-            // Refresh timetables
-            await onTimeTablesRefresh();
-
-            // Open editor immediately
-            setEditingTimeTable(newTimeTable);
-            setIsEditorOpen(true);
-        } catch (error) {
-            console.error('Create failed', error);
-            alert('创建失败');
-        } finally {
-            setIsCreating(false);
-        }
+    const handleCreate = () => {
+        const tempTimeTable: TimeTable = {
+            id: 'new',
+            userId: schedule.userId,
+            name: '新时间表',
+            sameDuration: true,
+            duration: 45,
+            isDefault: false,
+            periods: getDefaultPeriods(),
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+        setEditingTimeTable(tempTimeTable);
+        setIsEditorOpen(true);
     };
 
     const handleDelete = async (e: React.MouseEvent, id: string) => {
@@ -142,6 +149,52 @@ export function TimeTableListModal({
                     >
                         <X className="w-5 h-5" />
                     </button>
+                </div>
+
+                {/* Auto Switch Toggle Section */}
+                <div className="px-6 py-3 bg-muted/20 border-b border-border flex items-center justify-between">
+                    <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-medium">自动切换夏冬令时</span>
+                        <span className="text-xs text-muted-foreground">根据日期自动变更时间表</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {schedule.enableAutoTimeTableSwitch && (
+                            <button
+                                onClick={() => setIsConfigOpen(true)}
+                                className="text-xs text-primary font-medium hover:underline flex items-center gap-1"
+                            >
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                                设置规则
+                            </button>
+                        )}
+                        <button
+                            onClick={async () => {
+                                if (toggling) return;
+                                setToggling(true);
+                                const newValue = !schedule.enableAutoTimeTableSwitch;
+                                try {
+                                    await onScheduleUpdate(schedule.id, {
+                                        enableAutoTimeTableSwitch: newValue
+                                    });
+                                    if (newValue) {
+                                        setIsPendingEnable(true);
+                                        setIsConfigOpen(true);
+                                    }
+                                } finally {
+                                    setToggling(false);
+                                }
+                            }}
+                            className={cn(
+                                "w-10 h-6 rounded-full transition-colors relative focus:outline-none focus:ring-2 focus:ring-primary/20",
+                                schedule.enableAutoTimeTableSwitch ? "bg-primary" : "bg-muted-foreground/30"
+                            )}
+                        >
+                            <div className={cn(
+                                "absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm",
+                                schedule.enableAutoTimeTableSwitch ? "translate-x-4" : ""
+                            )} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="p-4 overflow-y-auto flex-1 custom-scrollbar space-y-3">
@@ -223,19 +276,40 @@ export function TimeTableListModal({
             </div>
 
             {/* Nested Editor Modal */}
-            {editingTimeTable && (
-                <TimeTableEditorModal
-                    isOpen={isEditorOpen}
-                    timeTable={editingTimeTable}
-                    onClose={() => {
-                        setIsEditorOpen(false);
-                        setEditingTimeTable(null);
-                    }}
-                    onSave={async () => {
-                        await onTimeTablesRefresh();
-                    }}
-                />
-            )}
-        </div>
+            {
+                editingTimeTable && (
+                    <TimeTableEditorModal
+                        isOpen={isEditorOpen}
+                        timeTable={editingTimeTable}
+                        onClose={() => {
+                            setIsEditorOpen(false);
+                            setEditingTimeTable(null);
+                        }}
+                        onSave={async () => {
+                            await onTimeTablesRefresh();
+                        }}
+                    />
+                )
+            }
+
+            {/* Config Modal */}
+            <TimeTableSwitchConfigModal
+                isOpen={isConfigOpen}
+                onClose={() => {
+                    setIsConfigOpen(false);
+                    // If we were pending enabling (just turned on) and closed without save, revert
+                    if (isPendingEnable) {
+                        onScheduleUpdate(schedule.id, { enableAutoTimeTableSwitch: false });
+                        setIsPendingEnable(false);
+                    }
+                }}
+                onSaved={async () => {
+                    setIsPendingEnable(false);
+                    await onScheduleUpdate(schedule.id, {});
+                    setIsConfigOpen(false);
+                }}
+                timeTables={timeTables}
+            />
+        </div >
     );
 }

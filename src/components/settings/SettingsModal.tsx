@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSettings } from '@/hooks/use-settings';
 import { useUIStore } from '@/stores/ui-store';
-import { X, LogOut, Clock, ChevronRight, LayoutTemplate } from 'lucide-react';
+import { X, LogOut, Clock, ChevronRight, LayoutTemplate, Calendar } from 'lucide-react';
 import { Schedule, TimeTable } from '@/types';
 import { TimeTableListModal } from '../schedule/TimeTableListModal';
 import { AppearanceSettingsModal } from './AppearanceSettingsModal';
@@ -11,9 +11,10 @@ interface SettingsModalProps {
     timeTables?: TimeTable[];
     onScheduleUpdate?: (id: string, data: any) => Promise<void>;
     onTimeTablesRefresh?: () => Promise<void>;
+    onManageSchedule?: () => void;
 }
 
-export function SettingsModal({ currentSchedule, timeTables = [], onScheduleUpdate, onTimeTablesRefresh }: SettingsModalProps) {
+export function SettingsModal({ currentSchedule, timeTables = [], onScheduleUpdate, onTimeTablesRefresh, onManageSchedule }: SettingsModalProps) {
     const { settings, updateSettings, isUpdating } = useSettings();
     const { settingsModalOpen, closeSettingsModal } = useUIStore();
     const [isTimeListOpen, setIsTimeListOpen] = useState(false);
@@ -52,6 +53,26 @@ export function SettingsModal({ currentSchedule, timeTables = [], onScheduleUpda
                             <h3 className="text-lg font-medium text-foreground/80 pb-2 border-b border-border">
                                 课表设置
                             </h3>
+                            <div
+                                className="flex items-center justify-between p-4 bg-muted/30 rounded-xl cursor-pointer hover:bg-muted/50 transition-colors"
+                                onClick={onManageSchedule}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                        <Calendar className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <div className="font-medium">课表管理</div>
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                            {currentSchedule.name}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="text-xs text-primary font-medium">详情</div>
+                                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                            </div>
                             <div
                                 className="flex items-center justify-between p-4 bg-muted/30 rounded-xl cursor-pointer hover:bg-muted/50 transition-colors"
                                 onClick={() => setIsTimeListOpen(true)}

@@ -121,8 +121,12 @@ export function TimeTableEditorModal({
     const handleSave = async () => {
         setSaving(true);
         try {
-            const res = await fetch(`/api/timetables/${timeTable.id}`, {
-                method: 'PUT',
+            const isNew = timeTable.id === 'new';
+            const url = isNew ? '/api/timetables' : `/api/timetables/${timeTable.id}`;
+            const method = isNew ? 'POST' : 'PUT';
+
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name,

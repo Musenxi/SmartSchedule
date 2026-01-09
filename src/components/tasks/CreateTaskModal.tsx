@@ -1,16 +1,52 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+
 import { TaskType, TaskInput, Task } from '@/types/task';
-import { X, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
-import { parseISO, format, addDays, startOfWeek } from 'date-fns';
+import { X, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { parseISO, format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { CustomCalendar } from '@/components/ui/CustomCalendar';
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+
+interface TimeInputProps {
+    label: string;
+    value: string;
+    onChange: (val: string) => void;
+    min?: string;
+    required?: boolean;
+    className?: string;
+}
+
+function TimeInput({ label, value, onChange, required, className }: TimeInputProps) {
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    return (
+        <div className={cn("w-full", className)}>
+            <label className="block text-sm font-medium text-foreground mb-1">{label}</label>
+            <div className="relative">
+                <Clock
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                    onClick={() => inputRef.current?.showPicker()}
+                />
+                <input
+                    ref={inputRef}
+                    type="time"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-input outline-none text-foreground appearance-none [&::-webkit-calendar-picker-indicator]:hidden"
+                    required={required}
+                    onClick={() => inputRef.current?.showPicker()}
+                />
+            </div>
+        </div>
+    );
+}
 
 interface CreateTaskModalProps {
     isOpen: boolean;
@@ -25,28 +61,10 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
     const [description, setDescription] = useState('');
     const [type, setType] = useState<TaskType>('HOMEWORK');
     const [date, setDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
-    const [selectedMonth, setSelectedMonth] = useState(new Date());
+    const [selectedMonth] = useState(new Date()); // Keep for compatibility if needed or removed
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
     const [showInSchedule, setShowInSchedule] = useState(true);
     const [location, setLocation] = useState('');
-
-    // 生成日历天数
-    const generateCalendarDays = () => {
-        const year = selectedMonth.getFullYear();
-        const month = selectedMonth.getMonth();
-        const firstDay = new Date(year, month, 1);
-        const startDay = startOfWeek(firstDay, { weekStartsOn: 1 }); // 周一开始
-
-        const days: Date[] = [];
-        let current = startDay;
-        while (days.length < 42) { // 6 weeks x 7 days
-            days.push(new Date(current));
-            current = addDays(current, 1);
-        }
-        return days;
-    };
-
-    const calendarDays = generateCalendarDays();
 
     // 不同类型的时间字段不同
     // 作业: 只需截止时间
@@ -97,7 +115,8 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                 setStartTime('08:00');
                 setEndTime('10:00');
                 setLocation('');
-                setShowInSchedule(true);
+                // Homework/Custom defaults to false, Exam/Event defaults to true
+                setShowInSchedule(false);
             }
         }
     }, [isOpen, initialData]);
@@ -169,7 +188,15 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                                 <button
                                     key={t}
                                     type="button"
-                                    onClick={() => setType(t)}
+                                    onClick={() => {
+                                        setType(t);
+                                        // Auto-set default showInSchedule based on type
+                                        if (t === 'HOMEWORK' || t === 'CUSTOM') {
+                                            setShowInSchedule(false);
+                                        } else {
+                                            setShowInSchedule(true);
+                                        }
+                                    }}
                                     className={`flex-1 py-2 text-sm rounded-lg border transition-all ${type === t
                                         ? 'bg-primary text-primary-foreground border-primary'
                                         : 'bg-background text-foreground border-input hover:border-primary/50'
@@ -195,7 +222,7 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className={isRangeType ? "col-span-1 sm:col-span-2" : ""}>
+                        <div className={isRangeType ? "col-span-1 sm:col-span-2" : "col-span-1"}>
                             <label className="block text-sm font-medium text-foreground mb-1">日期</label>
                             <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                                 <PopoverTrigger asChild>
@@ -210,82 +237,15 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                                         {date ? format(new Date(date), 'yyyy年M月d日', { locale: zhCN }) : '选择日期'}
                                     </button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-2 z-[100]" align="center" sideOffset={8}>
-                                    <div className="w-[230px]">
-                                        {/* 月份导航 */}
-                                        <div className="flex items-center justify-between mb-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1))}
-                                                className="p-1 hover:bg-muted rounded-md transition-colors"
-                                            >
-                                                <ChevronLeft className="w-3 h-3" />
-                                            </button>
-                                            <span className="text-sm font-medium">
-                                                {format(selectedMonth, 'yyyy年M月', { locale: zhCN })}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1))}
-                                                className="p-1 hover:bg-muted rounded-md transition-colors"
-                                            >
-                                                <ChevronRight className="w-3 h-3" />
-                                            </button>
-                                        </div>
-
-                                        {/* 星期标题 */}
-                                        <div className="grid grid-cols-7 gap-0.5 mb-1">
-                                            {['一', '二', '三', '四', '五', '六', '日'].map((day) => (
-                                                <div key={day} className="text-center text-[10px] text-muted-foreground py-0.5">
-                                                    {day}
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        {/* 日期网格 */}
-                                        <div className="grid grid-cols-7 gap-0.5">
-                                            {calendarDays.map((day, index) => {
-                                                const isCurrentMonth = day.getMonth() === selectedMonth.getMonth();
-                                                const isToday = day.toDateString() === new Date().toDateString();
-                                                const isSelected = date === format(day, 'yyyy-MM-dd');
-
-                                                return (
-                                                    <button
-                                                        key={index}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setDate(format(day, 'yyyy-MM-dd'));
-                                                            setIsPopoverOpen(false);
-                                                        }}
-                                                        className={cn(
-                                                            "w-full aspect-square rounded-md text-xs font-medium transition-all flex items-center justify-center",
-                                                            !isCurrentMonth && "text-muted-foreground/40",
-                                                            isCurrentMonth && "text-foreground hover:bg-muted",
-                                                            isSelected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-                                                            !isSelected && isToday && "bg-secondary text-secondary-foreground"
-                                                        )}
-                                                    >
-                                                        {day.getDate()}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-
-                                        <div className="mt-2 pt-2 border-t border-border">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    const today = new Date();
-                                                    setDate(format(today, 'yyyy-MM-dd'));
-                                                    setSelectedMonth(today);
-                                                    setIsPopoverOpen(false);
-                                                }}
-                                                className="w-full py-1.5 text-xs text-primary hover:bg-primary/10 rounded-lg transition-colors font-medium"
-                                            >
-                                                跳转到今天
-                                            </button>
-                                        </div>
-                                    </div>
+                                <PopoverContent className="w-auto p-0 border-none shadow-none bg-transparent z-[100]" align="start" side="bottom" sideOffset={8} avoidCollisions={false}>
+                                    <CustomCalendar
+                                        selectedDate={date ? new Date(date) : undefined}
+                                        onSelect={(d) => {
+                                            setDate(format(d, 'yyyy-MM-dd'));
+                                            setIsPopoverOpen(false);
+                                        }}
+                                        className="bg-card border border-border shadow-lg rounded-xl"
+                                    />
                                 </PopoverContent>
                             </Popover>
                         </div>
@@ -303,52 +263,52 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                                         placeholder="例如: 第二教学楼 302"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-foreground mb-1">开始时间</label>
-                                    <input
-                                        type="time"
-                                        value={startTime}
-                                        onChange={(e) => setStartTime(e.target.value)}
-                                        className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-input outline-none text-foreground"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-foreground mb-1">结束时间</label>
-                                    <input
-                                        type="time"
-                                        value={endTime}
-                                        onChange={(e) => setEndTime(e.target.value)}
-                                        className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-input outline-none text-foreground"
-                                        required
-                                    />
-                                </div>
-
-                                <div className="col-span-1 sm:col-span-2 flex items-center gap-2 mt-1">
-                                    <input
-                                        type="checkbox"
-                                        id="showInSchedule"
-                                        checked={showInSchedule}
-                                        onChange={(e) => setShowInSchedule(e.target.checked)}
-                                        className="w-4 h-4 rounded border-input text-primary focus:ring-primary"
-                                    />
-                                    <label htmlFor="showInSchedule" className="text-sm text-foreground select-none cursor-pointer">
-                                        显示在课表中
-                                    </label>
-                                </div>
-                            </>
-                        ) : (
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-1">截止时间</label>
-                                <input
-                                    type="time"
-                                    value={endTime}
-                                    onChange={(e) => setEndTime(e.target.value)}
-                                    className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-input outline-none text-foreground"
+                                <TimeInput
+                                    label="开始时间"
+                                    value={startTime}
+                                    onChange={setStartTime}
                                     required
                                 />
-                            </div>
+                                <TimeInput
+                                    label="结束时间"
+                                    value={endTime}
+                                    onChange={setEndTime}
+                                    required
+                                />
+
+                            </>
+                        ) : (
+                            <TimeInput
+                                label="截止时间"
+                                value={endTime}
+                                onChange={setEndTime}
+                                required
+                            />
                         )}
+
+                        <div className="col-span-1 sm:col-span-2 flex items-center gap-2 mt-1">
+                            <div className="relative flex items-center justify-center w-5 h-5">
+                                <input
+                                    type="checkbox"
+                                    id="showInSchedule"
+                                    checked={showInSchedule}
+                                    onChange={(e) => setShowInSchedule(e.target.checked)}
+                                    className="peer appearance-none w-5 h-5 border-2 border-muted-foreground/30 rounded-full checked:bg-primary checked:border-primary transition-all cursor-pointer"
+                                />
+                                <svg
+                                    className="absolute w-3 h-3 text-primary-foreground pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth="3"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                            </div>
+                            <label htmlFor="showInSchedule" className="text-sm text-foreground select-none cursor-pointer">
+                                显示在课表中
+                            </label>
+                        </div>
                     </div>
 
                     <div>
@@ -371,7 +331,7 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

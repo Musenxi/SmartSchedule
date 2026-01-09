@@ -18,6 +18,7 @@ import { LogOut, Settings, GripVertical, CalendarDays, ListTodo } from 'lucide-r
 import { cn } from '@/lib/utils';
 import { getDay, getHours, getMinutes, parseISO } from 'date-fns';
 import { ScheduleManagerModal } from '@/components/schedule/ScheduleManagerModal';
+import { ScheduleListModal } from '@/components/schedule/ScheduleListModal';
 
 interface ScheduleData extends Schedule {
   courses: Course[];
@@ -43,6 +44,7 @@ export default function SchedulePage() {
 
   // Schedule Management State
   const [isScheduleManagerOpen, setIsScheduleManagerOpen] = useState(false);
+  const [isScheduleListOpen, setIsScheduleListOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
 
   // 检测触屏设备
@@ -421,6 +423,51 @@ export default function SchedulePage() {
     fetchTimeTables();
   }, [fetchSchedule, fetchTimeTables]);
 
+  // Auto-switch TimeTable Logic
+  useEffect(() => {
+    if (!schedule?.enableAutoTimeTableSwitch || !schedule.id) return;
+
+    const checkSwitch = async () => {
+      try {
+        const res = await fetch('/api/timetables/config');
+        if (!res.ok) return;
+        const config = await res.json();
+        const { winterStartDate, winterEndDate, winterTimeTableId, summerTimeTableId } = config;
+
+        if (!winterStartDate || !winterEndDate || !winterTimeTableId || !summerTimeTableId) return;
+
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentDay = now.getDate();
+        const currentVal = currentMonth * 100 + currentDay;
+
+        const [sm, sd] = winterStartDate.split('-').map(Number);
+        const startVal = sm * 100 + sd;
+        const [em, ed] = winterEndDate.split('-').map(Number);
+        const endVal = em * 100 + ed;
+
+        let isWinter = false;
+        if (startVal > endVal) { // Cross year (e.g. 10-01 to 04-30)
+          isWinter = currentVal >= startVal || currentVal <= endVal;
+        } else {
+          isWinter = currentVal >= startVal && currentVal <= endVal;
+        }
+
+        const targetId = isWinter ? winterTimeTableId : summerTimeTableId;
+
+        // If current active ID is different from target, update it
+        if (targetId && targetId !== schedule.activeTimeTableId) {
+          console.log('[AutoSwitch] Switching to', isWinter ? 'Winter' : 'Summer', 'Table:', targetId);
+          await handleUpdateSchedule(schedule.id, { activeTimeTableId: targetId });
+        }
+      } catch (e) {
+        console.error('Auto switch check failed', e);
+      }
+    };
+
+    checkSwitch();
+  }, [schedule?.enableAutoTimeTableSwitch, schedule?.id, schedule?.activeTimeTableId, schedule?.updatedAt]);
+
   const periods = useMemo(() => {
     if (globalTimeTables.length === 0) {
       return Array.from({ length: 12 }, (_, i) => ({
@@ -613,6 +660,9 @@ export default function SchedulePage() {
         timeTables={globalTimeTables}
         onScheduleUpdate={handleUpdateSchedule}
         onTimeTablesRefresh={fetchTimeTables}
+        onManageSchedule={() => {
+          setIsScheduleListOpen(true);
+        }}
       />
 
       <CreateTaskModal
@@ -650,6 +700,15 @@ export default function SchedulePage() {
           hasBackdrop={!isTransitioningFromDetail}
         />
       )}
+
+      <ScheduleListModal
+        isOpen={isScheduleListOpen}
+        onClose={() => setIsScheduleListOpen(false)}
+        schedules={allSchedules.map(s => ({ id: s.id, name: s.name, isActive: s.isActive }))}
+        onSelect={handleScheduleChange}
+        onEdit={handleEditSchedule}
+        onDelete={handleDeleteSchedule}
+      />
 
       {editingSchedule && (
         <ScheduleManagerModal

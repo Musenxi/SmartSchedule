@@ -10,6 +10,11 @@ const createTimeTableSchema = z.object({
     name: z.string().min(1).max(50),
     sameDuration: z.boolean().optional(),
     duration: z.number().optional(),
+    periods: z.array(z.object({
+        number: z.number(),
+        startTime: z.string(),
+        endTime: z.string()
+    })).optional()
 });
 
 // GET /api/timetables - 获取用户所有时间表
@@ -42,7 +47,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { name, sameDuration, duration } = createTimeTableSchema.parse(body);
+        const { name, sameDuration, duration, periods } = createTimeTableSchema.parse(body);
 
         // 检查是否是第一个时间表
         const existingCount = await prisma.timeTable.count({
@@ -59,7 +64,11 @@ export async function POST(request: NextRequest) {
                 duration: duration,
                 isDefault: isFirst,
                 periods: {
-                    create: getDefaultPeriods()
+                    create: periods ? periods.map(p => ({
+                        number: p.number,
+                        startTime: p.startTime,
+                        endTime: p.endTime
+                    })) : getDefaultPeriods()
                 }
             },
             include: { periods: true }
