@@ -128,7 +128,7 @@ export function EditCourseModal({ isOpen, onClose, course, totalWeeks = 20, onSa
                 onClick={onClose}
             >
                 <div
-                    className="bg-card w-full max-w-md rounded-2xl shadow-xl border border-border overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] bg-[#F5F5F9] dark:bg-background"
+                    className="bg-card w-full max-w-md max-h-[90vh] flex flex-col rounded-2xl shadow-xl border border-border overflow-hidden animate-in zoom-in-95 duration-200 bg-[#F5F5F9] dark:bg-background"
                     onClick={e => e.stopPropagation()}
                 >
                     {/* Top Bar */}

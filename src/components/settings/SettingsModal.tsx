@@ -18,11 +18,11 @@ export function SettingsModal() {
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
             onClick={handleOverlayClick}
         >
-            <div className="w-full max-w-2xl max-h-[90vh] overflow-auto bg-background rounded-2xl shadow-xl">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-background z-10">
+            <div className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-background rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background z-10 shrink-0">
                     <h2 className="text-xl font-semibold">设置</h2>
                     <button
                         onClick={closeSettingsModal}
@@ -32,7 +32,7 @@ export function SettingsModal() {
                     </button>
                 </div>
 
-                <div className="p-6 space-y-8">
+                <div className="p-6 space-y-8 overflow-y-auto custom-scrollbar">
                     {/* 外观设置 */}
                     <section className="space-y-4">
                         <h3 className="text-lg font-medium text-foreground/80 pb-2 border-b border-border">

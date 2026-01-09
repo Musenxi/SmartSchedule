@@ -101,7 +101,7 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                 type,
                 startTime: start?.toISOString(), // 仅 EXAM/EVENT 有 startTime
                 dueDate: due.toISOString(),
-                courseId: initialData ? initialData.courseId : courseId, // 保持原有的 courseId 或使用传入的
+                courseId: initialData ? (initialData.courseId || undefined) : courseId, // 保持原有的 courseId 或使用传入的
                 location: hasRange ? location : undefined,
                 showInSchedule: hasRange ? showInSchedule : undefined,
             });
@@ -120,7 +120,7 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-card w-full max-w-md rounded-2xl shadow-xl border border-border overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-card w-full max-w-md max-h-[90vh] flex flex-col rounded-2xl shadow-xl border border-border overflow-hidden animate-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between p-4 border-b border-border">
                     <h2 className="text-lg font-semibold text-foreground">{isEdit ? '编辑' : '新建'}{isRangeType ? (type === 'EXAM' ? '考试' : '活动') : '任务'}</h2>
                     <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
@@ -128,7 +128,7 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                <form onSubmit={handleSubmit} className="p-4 space-y-4 overflow-y-auto custom-scrollbar">
                     <div>
                         <label className="block text-sm font-medium text-foreground mb-1">类型</label>
                         <div className="flex gap-2">

@@ -215,7 +215,7 @@ ${base64Data}
             >
                 <div
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-card w-full max-w-sm rounded-2xl shadow-xl border border-border overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col"
+                    className="bg-card w-full max-w-sm max-h-[90vh] flex flex-col rounded-2xl shadow-xl border border-border overflow-hidden animate-in zoom-in-95 duration-200"
                 >
                     {/* Top Bar */}
                     <div className="flex items-center justify-between p-4 pb-2">
@@ -247,7 +247,7 @@ ${base64Data}
                     </div>
 
                     {/* Details List */}
-                    <div className="px-4 space-y-4 pb-6">
+                    <div className="px-4 space-y-4 pb-6 overflow-y-auto custom-scrollbar flex-1">
                         {course.times.map((time, index) => (
                             <div key={index} className="space-y-4">
                                 {/* Weeks */}

@@ -136,22 +136,19 @@ export function TimeSlotEditor({ isOpen, onClose, value, onChange, totalWeeks = 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-none">
-            {/* Backdrop */}
-            <div
-                className="fixed inset-0 bg-black/60 backdrop-blur-md pointer-events-auto animate-in fade-in"
-                onClick={onClose}
-            />
-
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
             {/* Content */}
-            <div className="w-full max-w-sm bg-[#F5F5F9] dark:bg-background rounded-t-2xl sm:rounded-2xl shadow-xl border border-border pointer-events-auto animate-in slide-in-from-bottom-full sm:zoom-in-95 duration-300 max-h-[85vh] flex flex-col relative z-[101]">
-                <div className="flex items-center justify-between p-4 border-b border-border bg-white dark:bg-card rounded-t-2xl sm:rounded-t-2xl shadow-sm">
+            <div
+                onClick={e => e.stopPropagation()}
+                className="w-full max-w-md bg-[#F5F5F9] dark:bg-background rounded-2xl shadow-xl border border-border animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col relative"
+            >
+                <div className="flex items-center justify-between p-4 border-b border-border bg-white dark:bg-card rounded-t-2xl shadow-sm shrink-0">
                     <button onClick={onClose} className="text-sm font-medium" style={{ color: 'hsl(var(--primary))' }}>取消</button>
                     <h3 className="text-base font-bold text-foreground">编辑时间段</h3>
                     <button onClick={handleSave} className="text-sm font-medium" style={{ color: 'hsl(var(--primary))' }}>保存</button>
                 </div>
 
-                <div className="overflow-y-auto p-4 space-y-6">
+                <div className="overflow-y-auto custom-scrollbar p-4 space-y-6">
                     {/* Week Selection */}
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">

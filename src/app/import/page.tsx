@@ -2,9 +2,12 @@
 
 import { useState } from 'react';
 import { PDFUploader } from '@/components/upload/PDFUploader';
+import { CSVUploader } from '@/components/upload/CSVUploader';
+import { BrowserGrabber } from '@/components/upload/BrowserGrabber';
 import { CourseVerifier } from '@/components/upload/CourseVerifier';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, FileText, FileSpreadsheet, Globe, PencilLine, Download } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 interface RecognizedCourse {
     name: string;
@@ -16,11 +19,13 @@ interface RecognizedCourse {
     weekRange: string;
 }
 
-type Step = 'upload' | 'verify' | 'success';
+type Step = 'select' | 'upload' | 'verify' | 'success';
+type ImportMethod = 'pdf' | 'csv' | 'browser' | 'manual';
 
 export default function ImportPage() {
     const router = useRouter();
-    const [step, setStep] = useState<Step>('upload');
+    const [step, setStep] = useState<Step>('select');
+    const [method, setMethod] = useState<ImportMethod | null>(null);
     const [result, setResult] = useState<any>(null);
     const [saving, setSaving] = useState(false);
 
@@ -51,8 +56,19 @@ export default function ImportPage() {
         }
     };
 
+    const handleSelectMethod = (m: ImportMethod) => {
+        setMethod(m);
+        if (m === 'manual') {
+            setResult({ courses: [] });
+            setStep('verify');
+        } else {
+            setStep('upload');
+        }
+    };
+
     const handleReset = () => {
-        setStep('upload');
+        setStep('select');
+        setMethod(null);
         setResult(null);
     };
 
@@ -74,31 +90,105 @@ export default function ImportPage() {
 
                 {/* Steps Indicator */}
                 <div className="flex items-center justify-center gap-2 text-sm">
+                    <span className={step === 'select' ? 'text-primary font-medium' : 'text-muted-foreground'}>
+                        1. 选择方式
+                    </span>
+                    <span className="text-muted-foreground">→</span>
                     <span className={step === 'upload' ? 'text-primary font-medium' : 'text-muted-foreground'}>
-                        1. 上传文件
+                        2. 导入数据
                     </span>
-                    <span className="text-muted-foreground">-</span>
+                    <span className="text-muted-foreground">→</span>
                     <span className={step === 'verify' ? 'text-primary font-medium' : 'text-muted-foreground'}>
-                        2. 确认课程
+                        3. 确认课程
                     </span>
-                    <span className="text-muted-foreground">-</span>
+                    <span className="text-muted-foreground">→</span>
                     <span className={step === 'success' ? 'text-primary font-medium' : 'text-muted-foreground'}>
-                        3. 完成
+                        4. 完成
                     </span>
                 </div>
 
                 <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
+                    {step === 'select' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <button
+                                onClick={() => handleSelectMethod('pdf')}
+                                className="group p-6 text-left bg-background border border-border rounded-2xl hover:border-primary/50 hover:bg-primary/[0.02] transition-all duration-300 h-full flex flex-col gap-4"
+                            >
+                                <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
+                                    <FileText className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-lg mb-1">PDF 课表导入</h3>
+                                    <p className="text-muted-foreground text-sm">支持教务系统导出的 PDF 文件，自动识别课程地点、节次。</p>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => handleSelectMethod('csv')}
+                                className="group p-6 text-left bg-background border border-border rounded-2xl hover:border-primary/50 hover:bg-primary/[0.02] transition-all duration-300 h-full flex flex-col gap-4"
+                            >
+                                <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500 group-hover:scale-110 transition-transform">
+                                    <FileSpreadsheet className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-lg mb-1">CSV/Excel 导入</h3>
+                                    <p className="text-muted-foreground text-sm">下载标准模版，填写后批量导入。适合手动整理大量课程。</p>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => handleSelectMethod('browser')}
+                                className="group p-6 text-left bg-background border border-border rounded-2xl hover:border-primary/50 hover:bg-primary/[0.02] transition-all duration-300 h-full flex flex-col gap-4"
+                            >
+                                <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                                    <Globe className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-lg mb-1">教务系统抓取</h3>
+                                    <p className="text-muted-foreground text-sm">在线登录教务系统，通过浏览器直接抓取当前屏幕课表（开发中）。</p>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => handleSelectMethod('manual')}
+                                className="group p-6 text-left bg-background border border-border rounded-2xl hover:border-primary/50 hover:bg-primary/[0.02] transition-all duration-300 h-full flex flex-col gap-4"
+                            >
+                                <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform">
+                                    <PencilLine className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-lg mb-1">手动录入</h3>
+                                    <p className="text-muted-foreground text-sm">直接进入编辑器，逐条添加课程。最灵活但也最耗时。</p>
+                                </div>
+                            </button>
+                        </div>
+                    )}
+
                     {step === 'upload' && (
                         <>
-                            <div className="mb-8 text-center max-w-lg mx-auto">
-                                <h2 className="text-lg font-semibold mb-2">上传 PDF 文件</h2>
-                                <p className="text-muted-foreground text-sm">
-                                    系统将尝试自动识别课程信息。识别后您可以手动调整。
-                                </p>
+                            <div className="mb-8 flex items-center gap-3">
+                                <button onClick={handleReset} className="p-2 hover:bg-muted rounded-full transition-colors">
+                                    <ArrowLeft className="w-5 h-5" />
+                                </button>
+                                <div>
+                                    <h2 className="text-lg font-semibold">
+                                        {method === 'pdf' && '上传 PDF 课表'}
+                                        {method === 'csv' && '上传 CSV/Excel 文件'}
+                                        {method === 'browser' && '从教务系统导入'}
+                                    </h2>
+                                    <p className="text-muted-foreground text-sm">
+                                        {method === 'pdf' && '系统将尝试自动识别课程信息。识别后您可以手动调整。'}
+                                        {method === 'csv' && '请确保您的文件符合标准模版格式。'}
+                                        {method === 'browser' && '模拟登录或粘贴教务系统页面源码进行解析。'}
+                                    </p>
+                                </div>
                             </div>
-                            <PDFUploader onUploadComplete={handleUploadComplete} />
 
-                            {result && result.courses?.length === 0 && (
+                            {method === 'pdf' && <PDFUploader onUploadComplete={handleUploadComplete} />}
+                            {method === 'csv' && <CSVUploader onUploadComplete={handleUploadComplete} />}
+                            {method === 'browser' && <BrowserGrabber onUploadComplete={handleUploadComplete} />}
+
+                            {result && result.courses?.length === 0 && method === 'pdf' && (
                                 <div className="mt-6 space-y-4">
                                     <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
                                         <p className="text-sm text-yellow-700 dark:text-yellow-400 mb-2">
