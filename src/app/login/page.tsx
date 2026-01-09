@@ -107,8 +107,10 @@ export default function LoginPage() {
           </button>
 
           <div className="text-center text-sm text-muted-foreground">
-            <p className="mb-1">测试账号: <span className="font-mono bg-muted px-1 rounded">your@email.com</span></p>
-            <p>密码: <span className="font-mono bg-muted px-1 rounded">password</span></p>
+            还没有账号？
+            <a href="/register" className="text-primary hover:underline ml-1">
+              立即注册
+            </a>
           </div>
         </form>
       </div>

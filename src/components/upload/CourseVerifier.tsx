@@ -18,7 +18,7 @@ interface RecognizedCourse {
 
 interface CourseVerifierProps {
     courses: RecognizedCourse[];
-    onConfirm: (courses: RecognizedCourse[]) => void;
+    onConfirm: (courses: RecognizedCourse[], options?: { newScheduleName?: string }) => void;
     onCancel: () => void;
 }
 
@@ -66,8 +66,19 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
         setEditForm(newCourse);
     };
 
+    const [importMode, setImportMode] = useState<'current' | 'new'>('current');
+    const [newScheduleName, setNewScheduleName] = useState('');
+
+    const handleConfirm = () => {
+        if (importMode === 'new' && !newScheduleName.trim()) {
+            alert('请输入新课表名称');
+            return;
+        }
+        onConfirm(courses, importMode === 'new' ? { newScheduleName } : undefined);
+    };
+
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-foreground">
                     共识别到 {courses.length} 门课程
@@ -81,7 +92,7 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
                 </button>
             </div>
 
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                 {courses.map((course, index) => (
                     <div
                         key={index}
@@ -205,6 +216,47 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
                 </div>
             )}
 
+            {/* Import Target Selection */}
+            <div className="bg-muted/30 p-4 rounded-xl space-y-3 border border-border">
+                <h4 className="text-sm font-medium text-foreground">导入目标</h4>
+                <div className="flex gap-4">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                            type="radio"
+                            name="importMode"
+                            value="current"
+                            checked={importMode === 'current'}
+                            onChange={() => setImportMode('current')}
+                            className="w-4 h-4 text-primary"
+                        />
+                        添加到当前课表
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                            type="radio"
+                            name="importMode"
+                            value="new"
+                            checked={importMode === 'new'}
+                            onChange={() => setImportMode('new')}
+                            className="w-4 h-4 text-primary"
+                        />
+                        创建新课表
+                    </label>
+                </div>
+                {importMode === 'new' && (
+                    <div className="animate-in slide-in-from-top-2 duration-200">
+                        <input
+                            type="text"
+                            value={newScheduleName}
+                            onChange={(e) => setNewScheduleName(e.target.value)}
+                            placeholder="请输入新课表名称 (如: 大三下学期)"
+                            className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:ring-1 focus:ring-primary outline-none"
+                            autoFocus
+                        />
+                    </div>
+                )}
+            </div>
+
             <div className="flex gap-3 pt-4 border-t border-border">
                 <button
                     onClick={onCancel}
@@ -213,11 +265,11 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
                     取消
                 </button>
                 <button
-                    onClick={() => onConfirm(courses)}
+                    onClick={handleConfirm}
                     disabled={courses.length === 0}
                     className="flex-1 py-2.5 bg-primary text-primary-foreground font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                    确认导入 ({courses.length})
+                    {importMode === 'new' ? '创建并导入' : '确认导入'}
                 </button>
             </div>
         </div>

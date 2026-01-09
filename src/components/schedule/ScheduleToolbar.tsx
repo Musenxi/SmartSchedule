@@ -25,6 +25,7 @@ interface ScheduleToolbarProps {
     onGoToWeek: (week: number) => void;
     onDateSelect: (date: Date) => void;
     onScheduleChange?: (scheduleId: string) => void;
+    onEditSchedule?: (scheduleId: string) => void;
 }
 
 export function ScheduleToolbar({
@@ -39,6 +40,7 @@ export function ScheduleToolbar({
     onGoToWeek,
     onDateSelect,
     onScheduleChange,
+    onEditSchedule,
 }: ScheduleToolbarProps) {
     const isFirstWeek = currentWeek <= 1;
     const isLastWeek = currentWeek >= totalWeeks;
@@ -130,24 +132,43 @@ export function ScheduleToolbar({
 
                         {/* 课程表列表下拉菜单 - 多个课表时显示 */}
                         {showScheduleList && schedules && schedules.length > 1 && (
-                            <div className="absolute top-full left-0 mt-2 w-48 bg-card rounded-xl shadow-xl border border-border overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                            <div className="absolute top-full left-0 mt-2 w-56 bg-card rounded-xl shadow-xl border border-border overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                                 {schedules.map((s) => (
-                                    <button
+                                    <div
                                         key={s.id}
-                                        onClick={() => {
-                                            onScheduleChange?.(s.id);
-                                            setShowScheduleList(false);
-                                        }}
                                         className={cn(
-                                            "w-full p-3 text-left text-sm hover:bg-muted/50 transition-colors flex items-center justify-between",
-                                            s.id === currentScheduleId && "bg-primary/10"
+                                            "w-full flex items-center justify-between group",
+                                            s.id === currentScheduleId ? "bg-primary/10" : "hover:bg-muted/50"
                                         )}
                                     >
-                                        <span>{s.name}</span>
-                                        {s.id === currentScheduleId && (
-                                            <Check className="w-4 h-4 text-primary" />
-                                        )}
-                                    </button>
+                                        <button
+                                            onClick={() => {
+                                                onScheduleChange?.(s.id);
+                                                setShowScheduleList(false);
+                                            }}
+                                            className="flex-1 p-3 text-left text-sm flex items-center gap-2"
+                                        >
+                                            <span className="truncate max-w-[120px]">{s.name}</span>
+                                            {s.id === currentScheduleId && (
+                                                <Check className="w-3.5 h-3.5 text-primary" />
+                                            )}
+                                        </button>
+
+                                        {/* Edit Button */}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onEditSchedule?.(s.id);
+                                                setShowScheduleList(false);
+                                            }}
+                                            className="p-3 text-muted-foreground hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
+                                            title="编辑课表"
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 ))}
                                 <a
                                     href="/import"

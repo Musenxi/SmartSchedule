@@ -17,6 +17,14 @@ model User {
   schedules Schedule[]
   tasks     Task[]
   settings  Settings?
+  timeTables TimeTable[]
+  // 全局时间表设置
+  defaultTimeTableId  String?
+  autoSwitchEnabled   Boolean @default(false)
+  winterTimeTableId   String?
+  winterStartDate     String?  // "MM-DD" 如 "10-01"
+  winterEndDate       String?  // "MM-DD" 如 "04-30"
+  summerTimeTableId   String?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
@@ -36,8 +44,7 @@ model Schedule {
   isActive                  Boolean     @default(false) // 是否为当前激活课表
   enableAutoTimeTableSwitch Boolean     @default(false) // 是否启用时间表自动切换
   courses                   Course[]
-  timeTables                TimeTable[]
-  activeTimeTableId         String? // 当前使用的时间表ID（手动模式下使用）
+  activeTimeTableId         String? // 当前使用的时间表ID
   createdAt                 DateTime    @default(now())
   updatedAt                 DateTime    @updatedAt
 
@@ -78,15 +85,14 @@ model CourseTime {
   @@map("course_times")
 }
 
-// 上课时间表
+// 上课时间表（用户级别，全局共享）
 model TimeTable {
   id           String    @id @default(cuid())
-  scheduleId   String
-  schedule     Schedule  @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String    // 时间表名称，如 "冬令时 10.1-4.30"
   sameDuration Boolean   @default(true) // 每节课时长是否相同
-  startDate    DateTime? // 生效开始日期（用于自动切换）
-  endDate      DateTime? // 生效结束日期（用于自动切换）
+  duration     Int?      // 每节课时长(分钟)
   isDefault    Boolean   @default(false) // 是否为默认时间表
   periods      Period[]
   createdAt    DateTime  @default(now())

@@ -13,11 +13,13 @@ export interface Schedule {
     activeTimeTableId?: string | null;
     createdAt: Date;
     updatedAt: Date;
+    // 可选的关联数据（从 API 响应获取时存在）
+    courses?: import('./course').Course[];
 }
 
+// 保持向后兼容
 export interface ScheduleWithRelations extends Schedule {
     courses: import('./course').Course[];
-    timeTables: TimeTable[];
 }
 
 export interface ScheduleInput {
@@ -31,11 +33,10 @@ export interface ScheduleInput {
 
 export interface TimeTable {
     id: string;
-    scheduleId: string;
+    userId: string;
     name: string;
     sameDuration: boolean;
-    startDate?: Date | null;
-    endDate?: Date | null;
+    duration?: number | null;
     isDefault: boolean;
     periods: Period[];
     createdAt: Date;

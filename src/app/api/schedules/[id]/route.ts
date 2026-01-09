@@ -32,9 +32,6 @@ export async function GET(
             include: {
                 courses: {
                     include: { times: true }
-                },
-                timeTables: {
-                    include: { periods: true }
                 }
             }
         });

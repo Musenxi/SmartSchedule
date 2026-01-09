@@ -17,22 +17,17 @@ import { getCurrentWeek, getWeekDates, isWeekInRange } from '@/lib/date-utils';
 import { LogOut, Settings, GripVertical, CalendarDays, ListTodo } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getDay, getHours, getMinutes, parseISO } from 'date-fns';
+import { ScheduleManagerModal } from '@/components/schedule/ScheduleManagerModal';
 
 interface ScheduleData extends Schedule {
   courses: Course[];
-  timeTables: Array<{
-    id: string;
-    name: string;
-    periods: Period[];
-  }>;
 }
-
-
 
 export default function SchedulePage() {
   const router = useRouter();
   const [schedule, setSchedule] = useState<ScheduleData | null>(null);
   const [allSchedules, setAllSchedules] = useState<ScheduleData[]>([]);
+  const [globalTimeTables, setGlobalTimeTables] = useState<import('@/types').TimeTable[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentWeek, setCurrentWeek] = useState(1);
@@ -45,6 +40,10 @@ export default function SchedulePage() {
   const [isResizing, setIsResizing] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const resizeRef = useRef<HTMLDivElement>(null);
+
+  // Schedule Management State
+  const [isScheduleManagerOpen, setIsScheduleManagerOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
 
   // 检测触屏设备
   useEffect(() => {
@@ -228,18 +227,16 @@ export default function SchedulePage() {
 
   // 将任务转换为课程对象
   const taskCourses = useMemo(() => {
-    if (!tasks || !schedule || !schedule.timeTables[0]) return [];
+    if (!tasks || !schedule || globalTimeTables.length === 0) return [];
 
-    const timeTablePeriods = schedule.timeTables[0].periods;
+    const activeTimeTable = globalTimeTables.find(t => t.id === schedule.activeTimeTableId)
+      || globalTimeTables.find(t => t.isDefault)
+      || globalTimeTables[0];
+    const timeTablePeriods = activeTimeTable?.periods || [];
 
-    // 辅助函数：根据时间字符串(HH:mm)找到对应的节次
     const findPeriodByTime = (timeStr: string) => {
       const [h, m] = timeStr.split(':').map(Number);
       const timeValue = h * 60 + m;
-
-      // 找到包含该时间的节次，或者最接近的节次
-      // 这里简化逻辑：找到第一个开始时间晚于等于它的节次，或者最后一个节次
-      // 更好的逻辑：找到时间段重叠的节次
 
       for (const p of timeTablePeriods) {
         const [sh, sm] = p.startTime.split(':').map(Number);
@@ -252,7 +249,6 @@ export default function SchedulePage() {
         }
       }
 
-      // 如果没找到，尝试找到最接近的开始时间
       for (const p of timeTablePeriods) {
         const [sh, sm] = p.startTime.split(':').map(Number);
         const startVal = sh * 60 + sm;
@@ -267,36 +263,30 @@ export default function SchedulePage() {
       .map(t => {
         const start = typeof t.startTime === 'string' ? parseISO(t.startTime) : t.startTime!;
         const end = typeof t.dueDate === 'string' ? parseISO(t.dueDate) : t.dueDate!;
-
-        // 计算周次
         const week = getCurrentWeek(new Date(schedule.firstWeekStart), start);
-
-        // 计算星期 (0=周日, 1=周一)
         let dayOfWeek = getDay(start);
-        if (dayOfWeek === 0) dayOfWeek = 7; // 转换为 1-7
+        if (dayOfWeek === 0) dayOfWeek = 7;
 
-        // 计算节次
         const startStr = `${String(getHours(start)).padStart(2, '0')}:${String(getMinutes(start)).padStart(2, '0')}`;
         const endStr = `${String(getHours(end)).padStart(2, '0')}:${String(getMinutes(end)).padStart(2, '0')}`;
-
         const startPeriod = findPeriodByTime(startStr);
-        const endPeriod = findPeriodByTime(endStr); // 简单的结束节次映射，可能需要更精确的持续时间计算
+        const endPeriod = findPeriodByTime(endStr);
 
         return {
           id: `task-${t.id}`,
           scheduleId: schedule.id,
           name: t.title,
-          color: t.type === 'EXAM' ? '#ef4444' : '#f59e0b', // 考试红色，活动琥珀色
+          color: t.type === 'EXAM' ? '#ef4444' : '#f59e0b',
           times: [{
             id: `task-time-${t.id}`,
             courseId: `task-${t.id}`,
             dayOfWeek,
             startPeriod,
-            endPeriod: Math.max(startPeriod, endPeriod), // 确保结束 >= 开始
-            weekRange: String(week), // 仅在这一周显示
+            endPeriod: Math.max(startPeriod, endPeriod),
+            weekRange: String(week),
             location: t.location || '',
             teacher: t.type === 'EXAM' ? '考试' : '活动'
-          }] as any[], // Casting to any[] to avoid strict type checks on missing relations if meaningful
+          }] as any[],
           createdAt: new Date(),
           updatedAt: new Date(),
         } as Course;
@@ -311,7 +301,7 @@ export default function SchedulePage() {
   // 获取课表数据
   const fetchSchedule = useCallback(async (preserveWeek = false, targetScheduleId?: string) => {
     try {
-      const res = await fetch('/api/schedules');
+      const res = await fetch('/api/schedules', { cache: 'no-store' });
 
       if (res.status === 401) {
         router.push('/login');
@@ -326,7 +316,6 @@ export default function SchedulePage() {
       setAllSchedules(schedules);
 
       if (schedules.length > 0) {
-        // If targetScheduleId is provided, use that; otherwise use active or first
         let targetSchedule;
         if (targetScheduleId) {
           targetSchedule = schedules.find((s: ScheduleData) => s.id === targetScheduleId);
@@ -336,7 +325,6 @@ export default function SchedulePage() {
         }
 
         setSchedule(targetSchedule);
-        // Only update currentWeek on initial load or schedule switch
         if (!preserveWeek) {
           const week = getCurrentWeek(new Date(targetSchedule.firstWeekStart));
           setCurrentWeek(Math.min(Math.max(1, week), targetSchedule.totalWeeks));
@@ -349,16 +337,70 @@ export default function SchedulePage() {
     }
   }, [router]);
 
+  // 获取全局时间表
+  const fetchTimeTables = useCallback(async () => {
+    try {
+      const res = await fetch('/api/timetables', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        setGlobalTimeTables(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch timetables:', error);
+    }
+  }, []);
+
   const handleScheduleChange = useCallback((scheduleId: string) => {
     fetchSchedule(false, scheduleId);
   }, [fetchSchedule]);
 
+  const handleEditSchedule = (scheduleId: string) => {
+    const target = allSchedules.find(s => s.id === scheduleId);
+    if (target) {
+      setEditingSchedule(target);
+      setIsScheduleManagerOpen(true);
+    }
+  };
+
+  const handleUpdateSchedule = async (id: string, data: Partial<Schedule>) => {
+    try {
+      const res = await fetch(`/api/schedules/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) throw new Error('Update failed');
+
+      await fetchSchedule(true, id); // Refresh data with correct schedule ID
+    } catch (error) {
+      console.error('Failed to update schedule:', error);
+      throw error; // Re-throw for modal to handle
+    }
+  };
+
+  const handleDeleteSchedule = async (id: string) => {
+    try {
+      const res = await fetch(`/api/schedules/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) throw new Error('Delete failed');
+
+      await fetchSchedule();
+    } catch (error) {
+      console.error('Failed to delete schedule:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     fetchSchedule();
-  }, [fetchSchedule]);
+    fetchTimeTables();
+  }, [fetchSchedule, fetchTimeTables]);
 
   const periods = useMemo(() => {
-    if (!schedule || schedule.timeTables.length === 0) {
+    if (globalTimeTables.length === 0) {
       return Array.from({ length: 12 }, (_, i) => ({
         id: `default-${i + 1}`,
         timeTableId: 'default',
@@ -367,8 +409,14 @@ export default function SchedulePage() {
         endTime: `${8 + Math.floor((i + 1) * 0.75)}:${((i + 1) % 2) * 30 || '00'}`,
       }));
     }
-    return schedule.timeTables[0].periods;
-  }, [schedule]);
+
+    // Find active time table for current schedule
+    const activeTimeTable = globalTimeTables.find(t => t.id === schedule?.activeTimeTableId)
+      || globalTimeTables.find(t => t.isDefault)
+      || globalTimeTables[0];
+
+    return activeTimeTable?.periods || [];
+  }, [globalTimeTables, schedule?.activeTimeTableId]);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -401,13 +449,22 @@ export default function SchedulePage() {
 
   if (!schedule) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="text-center">还没有课表</div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-4 p-4">
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-semibold">欢迎使用 SmartSchedule</h2>
+          <p className="text-muted-foreground">还没有课表，立即创建或导入一个吧</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => router.push('/import')}
+            className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium hover:opacity-90 transition-opacity"
+          >
+            导入课表
+          </button>
+        </div>
       </div>
     );
   }
-
-
 
   return (
     <div className="flex flex-col h-[100dvh] bg-background text-foreground overflow-hidden select-none overscroll-none">
@@ -416,7 +473,6 @@ export default function SchedulePage() {
         {/* 左侧：课程表 */}
         <div className={cn(
           "flex-1 flex flex-col min-w-0 transition-transform duration-300 md:transform-none bg-background",
-          // 移动端逻辑：根据视图显隐
           mobileView === 'schedule' ? 'flex' : 'hidden md:flex'
         )}>
           <ScheduleToolbar
@@ -431,6 +487,7 @@ export default function SchedulePage() {
             onGoToWeek={(week) => setCurrentWeek(week)}
             onDateSelect={handleDateSelect}
             onScheduleChange={handleScheduleChange}
+            onEditSchedule={handleEditSchedule}
           />
           <div className="flex-1 overflow-hidden relative bg-card/30">
             <WeekView
@@ -482,12 +539,9 @@ export default function SchedulePage() {
         <div
           className={cn(
             "border-l border-border bg-card/30 flex-shrink-0 relative overflow-hidden",
-            // 移动端：全屏显示
             mobileView === 'tasks' ? 'flex w-full' : 'hidden md:flex' // md:flex 恢复侧边栏
           )}
           style={{
-            // 移动端不应用固定宽度，使用 w-full
-            // 桌面端应用 panelWidth
             ...(typeof window !== 'undefined' && window.innerWidth >= 768 ? { width: panelWidth } : {})
           }}
         >
@@ -532,7 +586,12 @@ export default function SchedulePage() {
         </button>
       </div>
 
-      <SettingsModal />
+      <SettingsModal
+        currentSchedule={schedule || undefined}
+        timeTables={globalTimeTables}
+        onScheduleUpdate={handleUpdateSchedule}
+        onTimeTablesRefresh={fetchTimeTables}
+      />
 
       <CreateTaskModal
         isOpen={isTaskModalOpen}
@@ -565,6 +624,21 @@ export default function SchedulePage() {
           course={editingCourse}
           totalWeeks={schedule.totalWeeks}
           onSave={() => fetchSchedule(true)}
+        />
+      )}
+
+      {editingSchedule && (
+        <ScheduleManagerModal
+          isOpen={isScheduleManagerOpen}
+          schedule={editingSchedule}
+          timeTables={globalTimeTables}
+          onClose={() => {
+            setIsScheduleManagerOpen(false);
+            setEditingSchedule(null);
+          }}
+          onUpdate={handleUpdateSchedule}
+          onDelete={handleDeleteSchedule}
+          onTimeTablesRefresh={fetchTimeTables}
         />
       )}
     </div>

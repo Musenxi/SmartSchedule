@@ -1,14 +1,25 @@
-'use client';
-
+import { useState } from 'react';
 import { useSettings } from '@/hooks/use-settings';
 import { useUIStore } from '@/stores/ui-store';
-import { X, LogOut } from 'lucide-react';
+import { X, LogOut, Clock, ChevronRight } from 'lucide-react';
+import { Schedule, TimeTable } from '@/types';
+import { TimeTableListModal } from '../schedule/TimeTableListModal';
 
-export function SettingsModal() {
+interface SettingsModalProps {
+    currentSchedule?: Schedule;
+    timeTables?: TimeTable[];
+    onScheduleUpdate?: (id: string, data: any) => Promise<void>;
+    onTimeTablesRefresh?: () => Promise<void>;
+}
+
+export function SettingsModal({ currentSchedule, timeTables = [], onScheduleUpdate, onTimeTablesRefresh }: SettingsModalProps) {
     const { settings, updateSettings, isUpdating } = useSettings();
     const { settingsModalOpen, closeSettingsModal } = useUIStore();
+    const [isTimeListOpen, setIsTimeListOpen] = useState(false);
 
     if (!settingsModalOpen || !settings) return null;
+
+    const activeTimeTable = timeTables.find(t => t.id === currentSchedule?.activeTimeTableId) || timeTables.find(t => t.isDefault) || timeTables[0];
 
     const handleOverlayClick = (e: React.MouseEvent) => {
         if (e.target === e.currentTarget) {
@@ -33,12 +44,41 @@ export function SettingsModal() {
                 </div>
 
                 <div className="p-6 space-y-8 overflow-y-auto custom-scrollbar">
+                    {/* Class Time Settings */}
+                    {currentSchedule && (
+                        <section className="space-y-4">
+                            <h3 className="text-lg font-medium text-foreground/80 pb-2 border-b border-border">
+                                课表设置
+                            </h3>
+                            <div
+                                className="flex items-center justify-between p-4 bg-muted/30 rounded-xl cursor-pointer hover:bg-muted/50 transition-colors"
+                                onClick={() => setIsTimeListOpen(true)}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                        <Clock className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <div className="font-medium">上课时间设置</div>
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                            {activeTimeTable ? activeTimeTable.name : '未设置时间表'}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="text-xs text-primary font-medium">管理</div>
+                                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                            </div>
+                        </section>
+                    )}
+
                     {/* 外观设置 */}
                     <section className="space-y-4">
                         <h3 className="text-lg font-medium text-foreground/80 pb-2 border-b border-border">
                             外观显示
                         </h3>
-
+                        {/* ... existing appearance settings ... */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
                                 <div>
@@ -200,6 +240,22 @@ export function SettingsModal() {
                     </button>
                 </div>
             </div>
+
+            {/* Nested TimeTable List Modal */}
+            {currentSchedule && (
+                <TimeTableListModal
+                    isOpen={isTimeListOpen}
+                    schedule={currentSchedule}
+                    timeTables={timeTables}
+                    onClose={() => setIsTimeListOpen(false)}
+                    onScheduleUpdate={async (id, data) => {
+                        if (onScheduleUpdate) await onScheduleUpdate(id, data);
+                    }}
+                    onTimeTablesRefresh={async () => {
+                        if (onTimeTablesRefresh) await onTimeTablesRefresh();
+                    }}
+                />
+            )}
         </div>
     );
 }

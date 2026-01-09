@@ -59,23 +59,9 @@ export const useScheduleStore = create<ScheduleState>()(
                 const schedule = state.schedules.find(s => s.id === state.activeScheduleId);
                 if (!schedule) return null;
 
-                // 如果启用了自动切换，根据日期选择时间表
-                if (schedule.enableAutoTimeTableSwitch) {
-                    const now = new Date();
-                    const matchingTable = state.timeTables.find(tt => {
-                        if (tt.startDate && tt.endDate) {
-                            return now >= new Date(tt.startDate) && now <= new Date(tt.endDate);
-                        }
-                        return false;
-                    });
-                    if (matchingTable) return matchingTable;
-
-                    // 返回默认时间表
-                    return state.timeTables.find(tt => tt.isDefault) || state.timeTables[0] || null;
-                }
-
-                // 手动模式：返回指定的时间表
+                // 返回指定的时间表或默认时间表
                 return state.timeTables.find(tt => tt.id === schedule.activeTimeTableId) ||
+                    state.timeTables.find(tt => tt.isDefault) ||
                     state.timeTables[0] || null;
             },
 

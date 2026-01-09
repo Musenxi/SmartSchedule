@@ -17,10 +17,85 @@ export function parseAcademicHTML(html: string): RecognizedCourse[] {
     const doc = parser.parseFromString(html, 'text/html');
     const courses: RecognizedCourse[] = [];
 
-    // Strategy 1: Look for <td> elements that seem to contain course info
-    // Often course info in academic systems is inside a grid <td> with specific patterns
-    // e.g., "课程名<br/>教师<br/>地点<br/>1-16周"
+    // Strategy 1: Specific "ZhengFang" / Kingosoft Style
+    // Structure: <td id="day-startNode"> <div class="timetable_con"> ... </div> </td>
+    const zfCells = doc.querySelectorAll('td.td_wrap');
+    if (zfCells.length > 0) {
+        zfCells.forEach((cell) => {
+            const id = cell.getAttribute('id') || '';
+            const matchId = id.match(/^(\d+)-(\d+)$/);
+            if (!matchId) return;
 
+            const dayOfWeek = parseInt(matchId[1], 10);
+            const startPeriodInitial = parseInt(matchId[2], 10);
+
+            const contentDivs = cell.querySelectorAll('.timetable_con');
+            contentDivs.forEach((div) => {
+                const htmlDiv = div as HTMLElement;
+                const titleSpan = div.querySelector('.title');
+                if (!titleSpan) return;
+
+                const name = (titleSpan as HTMLElement).innerText.trim();
+                let teacher = "";
+                let location = "";
+                let weekRange = "";
+                let startPeriod = startPeriodInitial;
+                let endPeriod = startPeriodInitial + 1; // Default duration of 2
+
+                // Extract details from paragraphs
+                const ps = div.querySelectorAll('p');
+                ps.forEach((p) => {
+                    const text = (p as HTMLElement).innerText.trim();
+                    const iconSpan = p.querySelector('span[title]');
+                    const titleType = iconSpan?.getAttribute('title') || "";
+
+                    if (titleType.includes('教师')) {
+                        teacher = text.replace('教师', '').trim();
+                    } else if (titleType.includes('地点')) {
+                        location = text.replace('上课地点', '').trim();
+                    } else if (titleType.includes('节/周')) {
+                        // Example: "(10-12节)7周,14周" or "(10-11节)1-16周"
+                        const timeText = text;
+
+                        // Parse Period Range
+                        const periodMatch = timeText.match(/\((\d+)-(\d+)节\)/);
+                        if (periodMatch) {
+                            startPeriod = parseInt(periodMatch[1], 10);
+                            endPeriod = parseInt(periodMatch[2], 10);
+                        }
+
+                        // Parse Week Range (heuristic)
+                        // This is complex as it can be "7周,14周" or "1-16周"
+                        const weekMatch = timeText.match(/\)(.+)$/);
+                        if (weekMatch) {
+                            weekRange = weekMatch[1].trim();
+                        } else {
+                            weekRange = timeText;
+                        }
+                    }
+                });
+
+                if (name) {
+                    courses.push({
+                        name,
+                        teacher,
+                        location,
+                        dayOfWeek,
+                        startPeriod,
+                        endPeriod,
+                        weekRange
+                    });
+                }
+            });
+        });
+
+        if (courses.length > 0) {
+            return deduplicateCourses(courses);
+        }
+    }
+
+    // Strategy 2: Generic Fallback (Existing Logic)
+    // Look for <td> elements that seem to contain course info
     const cells = doc.querySelectorAll('td, div[class*="course"], div[class*="item"]');
 
     cells.forEach((cell) => {
@@ -29,16 +104,12 @@ export function parseAcademicHTML(html: string): RecognizedCourse[] {
         const text = htmlCell.innerText || htmlCell.textContent || "";
         if (text.length < 5) return;
 
-        // Common patterns:
-        // Course Name
-        // [Teacher]
-        // [Location]
-        // [Week Range] (e.g. 1-16周 or 1-16(周))
+        // Skip cells that were processed by Strategy 1 if they have the specific class
+        if (htmlCell.classList.contains('timetable_con') || htmlCell.classList.contains('td_wrap')) return;
 
         const lines = text.split(/\n|<br\/?>/).map((l: string) => l.trim()).filter((l: string) => l.length > 0);
 
         if (lines.length >= 2) {
-            // Very heuristic extraction
             const name = lines[0];
             let teacher = "";
             let location = "";
@@ -56,17 +127,12 @@ export function parseAcademicHTML(html: string): RecognizedCourse[] {
             });
 
             // If we found something that looks like a course name
-            if (name.length > 1 && !name.includes('星期') && !name.includes('节')) {
-                // Determine day and periods if possible from parent/context
-                // For now, we'll just extract what we can and let the user verify
-                // Mapping day/period from HTML table is hard without knowing schema
-                // so we prioritize extracting the raw metadata.
-
+            if (name.length > 1 && !name.includes('星期') && !name.includes('节') && !name.match(/^\d/)) {
                 courses.push({
                     name,
                     teacher,
                     location,
-                    dayOfWeek: 1, // Default, user will adjust in Verifier
+                    dayOfWeek: 1, // Generic fallback cannot determine day easily
                     startPeriod: 1,
                     endPeriod: 2,
                     weekRange
@@ -75,6 +141,9 @@ export function parseAcademicHTML(html: string): RecognizedCourse[] {
         }
     });
 
-    // Remove duplicates
+    return deduplicateCourses(courses);
+}
+
+function deduplicateCourses(courses: RecognizedCourse[]): RecognizedCourse[] {
     return Array.from(new Set(courses.map(s => JSON.stringify(s)))).map(s => JSON.parse(s));
 }

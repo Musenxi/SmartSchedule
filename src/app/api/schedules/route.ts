@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
 import { z } from 'zod';
 
+// Disable Next.js route caching
+export const dynamic = 'force-dynamic';
+
 const createScheduleSchema = z.object({
     name: z.string().min(1).max(50),
     firstWeekStart: z.string().datetime(),
@@ -26,9 +29,6 @@ export async function GET(request: NextRequest) {
             include: {
                 courses: {
                     include: { times: true }
-                },
-                timeTables: {
-                    include: { periods: true }
                 }
             },
             orderBy: { createdAt: 'desc' }
@@ -68,10 +68,10 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        // 创建默认时间表
+        // 创建默认时间表（属于用户而非课表）
         await prisma.timeTable.create({
             data: {
-                scheduleId: schedule.id,
+                userId: userId,
                 name: '默认时间表',
                 sameDuration: true,
                 isDefault: true,

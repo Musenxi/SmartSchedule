@@ -47,17 +47,15 @@ async function main() {
 
     console.log('✅ 课表创建成功:', schedule.name);
 
-    // 创建默认时间表
+    // 创建默认时间表（属于用户而非课表）
     const timeTable = await prisma.timeTable.upsert({
         where: { id: 'default-timetable' },
         update: {},
         create: {
             id: 'default-timetable',
-            scheduleId: schedule.id,
+            userId: user.id,
             name: '冬令时 10.1-4.30',
             sameDuration: false,
-            startDate: new Date('2025-10-01'),
-            endDate: new Date('2026-04-30'),
             isDefault: true,
             periods: {
                 create: [
