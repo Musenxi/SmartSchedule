@@ -16,12 +16,19 @@ import { useTasks } from '@/hooks/use-tasks';
 import { getCurrentWeek, getWeekDates, isWeekInRange } from '@/lib/date-utils';
 import { LogOut, Settings, GripVertical, CalendarDays, ListTodo } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getDay, getHours, getMinutes, parseISO } from 'date-fns';
+import { getDay, getHours, getMinutes, parseISO, addWeeks, format } from 'date-fns';
 import { ScheduleManagerModal } from '@/components/schedule/ScheduleManagerModal';
 import { ScheduleListModal } from '@/components/schedule/ScheduleListModal';
 
 interface ScheduleData extends Schedule {
   courses: Course[];
+}
+
+interface TimeTableConfig {
+  winterStartDate?: string | null;
+  winterEndDate?: string | null;
+  winterTimeTableId?: string | null;
+  summerTimeTableId?: string | null;
 }
 
 export default function SchedulePage() {
@@ -46,6 +53,9 @@ export default function SchedulePage() {
   const [isScheduleManagerOpen, setIsScheduleManagerOpen] = useState(false);
   const [isScheduleListOpen, setIsScheduleListOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+
+  // Time Table Config
+  const [timeTableConfig, setTimeTableConfig] = useState<TimeTableConfig | null>(null);
 
   // 检测触屏设备
   useEffect(() => {
@@ -386,7 +396,7 @@ export default function SchedulePage() {
     }
   };
 
-  const handleUpdateSchedule = async (id: string, data: Partial<Schedule>) => {
+  const handleUpdateSchedule = useCallback(async (id: string, data: Partial<Schedule>) => {
     try {
       const res = await fetch(`/api/schedules/${id}`, {
         method: 'PUT',
@@ -401,12 +411,13 @@ export default function SchedulePage() {
       console.error('Failed to update schedule:', error);
       throw error; // Re-throw for modal to handle
     }
-  };
+  }, [fetchSchedule]);
 
-  const handleDeleteSchedule = async (id: string) => {
+  const handleDeleteSchedule = useCallback(async (id: string) => {
     try {
       const res = await fetch(`/api/schedules/${id}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
       });
 
       if (!res.ok) throw new Error('Delete failed');
@@ -416,23 +427,26 @@ export default function SchedulePage() {
       console.error('Failed to delete schedule:', error);
       throw error;
     }
-  };
+  }, [fetchSchedule]);
 
   useEffect(() => {
     fetchSchedule();
     fetchTimeTables();
+
+    // Fetch toggle config
+    fetch('/api/timetables/config')
+      .then(res => res.json())
+      .then(setTimeTableConfig)
+      .catch(console.error);
   }, [fetchSchedule, fetchTimeTables]);
 
-  // Auto-switch TimeTable Logic
+  // Restore: Auto-switch Backend Active TimeTable based on TODAY (System Time)
   useEffect(() => {
-    if (!schedule?.enableAutoTimeTableSwitch || !schedule.id) return;
+    if (!schedule?.enableAutoTimeTableSwitch || !schedule.id || !timeTableConfig) return;
 
     const checkSwitch = async () => {
       try {
-        const res = await fetch('/api/timetables/config');
-        if (!res.ok) return;
-        const config = await res.json();
-        const { winterStartDate, winterEndDate, winterTimeTableId, summerTimeTableId } = config;
+        const { winterStartDate, winterEndDate, winterTimeTableId, summerTimeTableId } = timeTableConfig;
 
         if (!winterStartDate || !winterEndDate || !winterTimeTableId || !summerTimeTableId) return;
 
@@ -457,7 +471,7 @@ export default function SchedulePage() {
 
         // If current active ID is different from target, update it
         if (targetId && targetId !== schedule.activeTimeTableId) {
-          console.log('[AutoSwitch] Switching to', isWinter ? 'Winter' : 'Summer', 'Table:', targetId);
+          console.log('[AutoSwitch] System forcing switch to', isWinter ? 'Winter' : 'Summer', targetId);
           await handleUpdateSchedule(schedule.id, { activeTimeTableId: targetId });
         }
       } catch (e) {
@@ -466,9 +480,12 @@ export default function SchedulePage() {
     };
 
     checkSwitch();
-  }, [schedule?.enableAutoTimeTableSwitch, schedule?.id, schedule?.activeTimeTableId, schedule?.updatedAt]);
+  }, [schedule?.enableAutoTimeTableSwitch, schedule?.id, schedule?.activeTimeTableId, timeTableConfig, handleUpdateSchedule]);
+
+
 
   const periods = useMemo(() => {
+    // Default periods
     if (globalTimeTables.length === 0) {
       return Array.from({ length: 12 }, (_, i) => ({
         id: `default-${i + 1}`,
@@ -479,13 +496,46 @@ export default function SchedulePage() {
       }));
     }
 
-    // Find active time table for current schedule
-    const activeTimeTable = globalTimeTables.find(t => t.id === schedule?.activeTimeTableId)
+    // Determine Logic Switch
+    let activeTimeTableId = schedule?.activeTimeTableId;
+
+    if (schedule?.enableAutoTimeTableSwitch && timeTableConfig) {
+      const { winterStartDate, winterEndDate, winterTimeTableId, summerTimeTableId } = timeTableConfig;
+      if (winterStartDate && winterEndDate && winterTimeTableId && summerTimeTableId && schedule.firstWeekStart) {
+        // Calculate based on VIEWING week
+        const viewDate = addWeeks(new Date(schedule.firstWeekStart), currentWeek - 1);
+        const month = viewDate.getMonth() + 1;
+        const day = viewDate.getDate();
+        const val = month * 100 + day;
+
+        const [wsM, wsD] = winterStartDate.split('-').map(Number);
+        const startVal = wsM * 100 + wsD;
+        const [weM, weD] = winterEndDate.split('-').map(Number);
+        const endVal = weM * 100 + weD;
+
+        let isWinter = false;
+        if (startVal > endVal) { // Cross year
+          isWinter = val >= startVal || val <= endVal;
+        } else {
+          isWinter = val >= startVal && val <= endVal;
+        }
+
+        if (isWinter) {
+          activeTimeTableId = winterTimeTableId;
+        } else {
+          activeTimeTableId = summerTimeTableId;
+        }
+      }
+    }
+
+    // Find active time table
+    const activeTimeTable = globalTimeTables.find(t => t.id === activeTimeTableId)
+      || globalTimeTables.find(t => t.id === schedule?.activeTimeTableId) // Fallback to DB stored
       || globalTimeTables.find(t => t.isDefault)
       || globalTimeTables[0];
 
     return activeTimeTable?.periods || [];
-  }, [globalTimeTables, schedule?.activeTimeTableId]);
+  }, [globalTimeTables, schedule?.activeTimeTableId, schedule?.enableAutoTimeTableSwitch, schedule?.firstWeekStart, timeTableConfig, currentWeek]);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -713,7 +763,7 @@ export default function SchedulePage() {
       {editingSchedule && (
         <ScheduleManagerModal
           isOpen={isScheduleManagerOpen}
-          schedule={editingSchedule}
+          schedule={allSchedules.find(s => s.id === editingSchedule.id) || editingSchedule}
           timeTables={globalTimeTables}
           onClose={() => {
             setIsScheduleManagerOpen(false);

@@ -237,7 +237,7 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                                         {date ? format(new Date(date), 'yyyy年M月d日', { locale: zhCN }) : '选择日期'}
                                     </button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0 border-none shadow-none bg-transparent z-[100]" align="start" side="bottom" sideOffset={8} avoidCollisions={false}>
+                                <PopoverContent className="w-auto p-0 border-none shadow-none bg-transparent z-[100]" align="start" side="bottom" sideOffset={8}>
                                     <CustomCalendar
                                         selectedDate={date ? new Date(date) : undefined}
                                         onSelect={(d) => {

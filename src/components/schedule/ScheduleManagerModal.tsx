@@ -129,7 +129,7 @@ export function ScheduleManagerModal({
                                 {firstWeekStart ? format(new Date(firstWeekStart), 'yyyy年M月d日', { locale: zhCN }) : '选择日期'}
                             </button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 border-none shadow-none bg-transparent z-[100]" align="center" sideOffset={8}>
+                        <PopoverContent className="w-auto p-0 border-none shadow-none bg-transparent z-[100]" align="start" side="bottom" sideOffset={8}>
                             <CustomCalendar
                                 selectedDate={firstWeekStart ? new Date(firstWeekStart) : undefined}
                                 onSelect={(d) => {
