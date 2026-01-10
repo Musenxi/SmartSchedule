@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Pencil, Trash2, Check, X, Plus, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pencil, Trash2, Check, X, Plus, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ClipboardPaste } from 'lucide-react';
 import { CourseForm } from '../schedule/CourseForm';
 import { Modal } from '@/components/ui/Modal';
 import { format } from 'date-fns';
@@ -65,6 +65,8 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel, s
     const [courses, setCourses] = useState<RecognizedCourse[]>(initialCourses);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editForm, setEditForm] = useState<RecognizedCourse | null>(null);
+    const [showPasteModal, setShowPasteModal] = useState(false);
+    const [pasteText, setPasteText] = useState('');
 
     // Dynamically compute week numbers from specificDate at render time
     const displayCourses = useMemo(() => {
@@ -162,19 +164,125 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel, s
         onConfirm(displayCourses);
     };
 
+    const handlePaste = () => {
+        setPasteText('');
+        setShowPasteModal(true);
+    };
+
+    const handleConfirmPaste = () => {
+        try {
+            const text = pasteText.trim();
+            if (!text) return;
+
+            // Try to extract data block
+            let data = null;
+            if (text.includes('===SmartSchedule===') && text.includes('---DATA---')) {
+                const parts = text.split('---DATA---');
+                if (parts.length > 1) {
+                    const base64Part = parts[1].split('===END===')[0].trim();
+                    try {
+                        const jsonStr = decodeURIComponent(escape(atob(base64Part)));
+                        data = JSON.parse(jsonStr);
+                    } catch (e) {
+                        console.error('Base64 decode failed', e);
+                    }
+                }
+            } else {
+                // Try parsing raw JSON (fallback)
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    // Not JSON
+                }
+            }
+
+            if (!data) {
+                alert('无法识别的内容，请确保复制了完整的分享文本');
+                return;
+            }
+
+            // Process data
+            let newCoursesToAdd: RecognizedCourse[] = [];
+
+            // Check version/type
+            if (data.type === 'course' || data.type === 'smart-schedule-course') {
+                const c = data.data;
+                newCoursesToAdd.push({
+                    name: c.name,
+                    teacher: c.teacher || undefined,
+                    location: undefined,
+                    credits: c.credits,
+                    times: Array.isArray(c.times) ? c.times.map((t: any) => ({
+                        dayOfWeek: t.dayOfWeek,
+                        startPeriod: t.startPeriod,
+                        endPeriod: t.endPeriod,
+                        weekRange: t.weekRange,
+                        location: t.location,
+                        teacher: t.teacher,
+                        specificDate: t.specificDate
+                    })) : [],
+                    confidence: 1.0
+                });
+            } else if (data.type === 'schedule' || data.type === 'smart-schedule-full') {
+                if (Array.isArray(data.data.courses)) {
+                    newCoursesToAdd = data.data.courses.map((c: any) => ({
+                        name: c.name,
+                        teacher: c.teacher || undefined,
+                        credits: c.credits,
+                        times: Array.isArray(c.times) ? c.times.map((t: any) => ({
+                            dayOfWeek: t.dayOfWeek,
+                            startPeriod: t.startPeriod,
+                            endPeriod: t.endPeriod,
+                            weekRange: t.weekRange,
+                            location: t.location,
+                            teacher: t.teacher,
+                            specificDate: t.specificDate
+                        })) : [],
+                        confidence: 1.0
+                    }));
+                }
+            } else {
+                alert('未知的数据格式');
+                return;
+            }
+
+            if (newCoursesToAdd.length > 0) {
+                setCourses(prev => [...prev, ...newCoursesToAdd]);
+                alert(`已成功识别并添加 ${newCoursesToAdd.length} 门课程`);
+                setShowPasteModal(false);
+            } else {
+                alert('未找到有效的课程数据');
+            }
+
+        } catch (error) {
+            console.error('Paste failed', error);
+            alert('解析失败，请检查文本格式');
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-foreground">
                     共识别到 {courses.length} 门课程
                 </h3>
-                <button
-                    onClick={handleAddNew}
-                    className="flex items-center gap-1 text-sm text-primary hover:underline"
-                >
-                    <Plus className="w-4 h-4" />
-                    手动添加
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handlePaste}
+                        className="flex items-center gap-1 text-sm text-primary hover:underline"
+                        title="从剪贴板粘贴课程或课表分享文本"
+                    >
+                        <ClipboardPaste className="w-4 h-4" />
+                        粘贴分享文本
+                    </button>
+                    <button
+                        onClick={handleAddNew}
+                        className="flex items-center gap-1 text-sm text-primary hover:underline"
+                    >
+                        <Plus className="w-4 h-4" />
+                        手动添加
+                    </button>
+                </div>
             </div>
 
             <div className="space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
@@ -261,6 +369,54 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel, s
                     />
                 </Modal>
             )}
+
+            {/* Paste Text Modal */}
+            <Modal
+                isOpen={showPasteModal}
+                onClose={() => setShowPasteModal(false)}
+                zIndex={70}
+                className="w-full max-w-md bg-card p-0 flex flex-col"
+            >
+                <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <ClipboardPaste className="w-5 h-5 text-primary" />
+                        粘贴分享文本
+                    </h3>
+                    <button
+                        onClick={() => setShowPasteModal(false)}
+                        className="p-1 text-muted-foreground hover:bg-muted rounded-full transition-colors"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                <div className="p-6">
+                    <textarea
+                        value={pasteText}
+                        onChange={(e) => setPasteText(e.target.value)}
+                        placeholder="在此处粘贴以 ===SmartSchedule=== 开头的分享文本..."
+                        className="w-full h-40 p-3 rounded-xl border border-input bg-background resize-none focus:ring-2 focus:ring-primary/20 outline-none text-sm font-mono"
+                        autoFocus
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                        支持识别课程详情分享文本和完整课表备份文本
+                    </p>
+                </div>
+                <div className="px-6 py-4 border-t border-border flex justify-end gap-3 bg-muted/10">
+                    <button
+                        onClick={() => setShowPasteModal(false)}
+                        className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                    >
+                        取消
+                    </button>
+                    <button
+                        onClick={handleConfirmPaste}
+                        disabled={!pasteText.trim()}
+                        className="px-6 py-2 text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 rounded-lg transition-opacity disabled:opacity-50"
+                    >
+                        识别并添加
+                    </button>
+                </div>
+            </Modal>
 
             {courses.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">

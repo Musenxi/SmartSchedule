@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Calendar as CalendarIcon, Trash2, Plus, BookOpen } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Trash2, Plus, BookOpen, Share, Clipboard, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -61,6 +61,7 @@ export function ScheduleManagerModal({
 
     // TimeTable List State
     const [isTimeListOpen, setIsTimeListOpen] = useState(false);
+    const [copySuccess, setCopySuccess] = useState(false);
 
     // Identify active time table (active > default > first)
     const activeTimeTable = timeTables.find(t => t.id === schedule.activeTimeTableId) || timeTables.find(t => t.isDefault) || timeTables[0];
@@ -99,6 +100,64 @@ export function ScheduleManagerModal({
         } finally {
             setIsDeleting(false);
             setShowDeleteConfirm(false);
+        }
+    };
+
+
+    const handleShare = async () => {
+        if (!schedule.courses || schedule.courses.length === 0) {
+            alert('当前课表没有课程，无法导出');
+            return;
+        }
+
+        const exportData = {
+            version: 1,
+            type: 'schedule',
+            data: {
+                name: schedule.name,
+                totalWeeks: schedule.totalWeeks,
+                periodsPerDay: 12, // Default or fetch if available
+                courses: schedule.courses.map(c => ({
+                    name: c.name,
+                    teacher: c.times[0]?.teacher || undefined,
+                    location: c.times[0]?.location || undefined,
+                    credits: c.credits,
+                    color: c.color,
+                    note: c.note,
+                    times: c.times.map(t => ({
+                        dayOfWeek: t.dayOfWeek,
+                        startPeriod: t.startPeriod,
+                        endPeriod: t.endPeriod,
+                        weekRange: t.weekRange,
+                        location: t.location,
+                        teacher: t.teacher,
+                        startTime: t.startTime,
+                        endTime: t.endTime
+                    }))
+                }))
+            }
+        };
+
+        const jsonStr = JSON.stringify(exportData);
+        // Base64 encode handling unicode
+        const base64Data = btoa(unescape(encodeURIComponent(jsonStr)));
+
+        const humanReadable = `[SmartSchedule 课表分享: ${schedule.name}]
+共包含 ${schedule.courses.length} 门课程`;
+
+        const exportText = `===SmartSchedule===
+${humanReadable}
+---DATA---
+${base64Data}
+===END===`;
+
+        try {
+            await navigator.clipboard.writeText(exportText);
+            setCopySuccess(true);
+            setTimeout(() => setCopySuccess(false), 2000);
+        } catch (e) {
+            console.error('Copy failed', e);
+            alert('复制失败');
         }
     };
 
@@ -201,7 +260,7 @@ export function ScheduleManagerModal({
                             className="w-full flex items-center justify-between px-3 py-2 bg-background border border-input rounded-lg hover:bg-muted/50 transition-colors"
                         >
                             <div className="flex items-center gap-2 text-sm text-foreground">
-                                <Plus className="w-4 h-4 text-muted-foreground" />
+                                <Plus className="w-4 h-4" />
                                 <span>导入新课程</span>
                             </div>
                             <div className="text-xs text-primary font-medium">添加</div>
@@ -212,12 +271,28 @@ export function ScheduleManagerModal({
                             className="w-full flex items-center justify-between px-3 py-2 bg-background border border-input rounded-lg hover:bg-muted/50 transition-colors"
                         >
                             <div className="flex items-center gap-2 text-sm text-foreground">
-                                <BookOpen className="w-4 h-4 text-muted-foreground" />
+                                <BookOpen className="w-4 h-4" />
                                 <span>已添课程 ({schedule.courses?.length || 0})</span>
                             </div>
                             <div className="text-xs text-primary font-medium">查看</div>
                         </button>
                     </div>
+                </div>
+
+                {/* Share/Backup */}
+                <div className="space-y-2 pt-2">
+                    <label className="text-sm font-medium text-muted-foreground">分享与备份</label>
+                    <button
+                        onClick={handleShare}
+                        disabled={copySuccess}
+                        className="w-full flex items-center justify-between px-3 py-2 bg-background border border-input rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                        <div className={cn("flex items-center gap-2 text-sm", copySuccess ? "text-green-600 dark:text-green-400" : "text-foreground")}>
+                            {copySuccess ? <Check className="w-4 h-4" /> : <Share className="w-4 h-4 text-muted-foreground" />}
+                            <span>{copySuccess ? '已复制分享文本' : '导出课程分享文本'}</span>
+                        </div>
+                        {!copySuccess && <div className="text-xs text-primary font-medium">复制</div>}
+                    </button>
                 </div>
             </div>
 
