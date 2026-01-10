@@ -108,7 +108,7 @@ export function ScheduleToolbar({
                             className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                         >
                             {scheduleName}
-                            {schedules && schedules.length > 1 && (
+                            {schedules && (
                                 <ChevronDown className={cn(
                                     "w-3 h-3 transition-transform",
                                     showScheduleList && "rotate-180"
@@ -116,22 +116,8 @@ export function ScheduleToolbar({
                             )}
                         </button>
 
-                        {/* 添加课表按钮 - 只有一个课表时显示 */}
-                        {showScheduleList && schedules && schedules.length === 1 && (
-                            <a
-                                href="/import"
-                                className="flex items-center justify-center w-4 h-4 text-primary hover:text-primary/80 transition-colors animate-in fade-in slide-in-from-left-1 duration-300"
-                                title="添加课表"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v8m4-4H8" />
-                                </svg>
-                            </a>
-                        )}
-
-                        {/* 课程表列表下拉菜单 - 多个课表时显示 */}
-                        {showScheduleList && schedules && schedules.length > 1 && (
+                        {/* 课程表列表下拉菜单 */}
+                        {showScheduleList && schedules && (
                             <div className="absolute top-full left-0 mt-2 w-56 bg-card rounded-xl shadow-xl border border-border overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                                 {schedules.map((s) => (
                                     <div

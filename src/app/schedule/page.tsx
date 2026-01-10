@@ -92,6 +92,20 @@ export default function SchedulePage() {
     return schedule.courses.find(c => c.id === selectedCourseId) || null;
   }, [selectedCourseId, schedule?.courses]);
 
+  const [username, setUsername] = useState('');
+
+  // Fetch user info
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user?.name) {
+          setUsername(data.user.name);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
   const handleCourseClick = (course: Course, time?: CourseTime) => {
     if (course.id.startsWith('task-')) {
       // 是任务（考试/活动）：打开任务编辑
@@ -345,6 +359,8 @@ export default function SchedulePage() {
           const week = getCurrentWeek(new Date(targetSchedule.firstWeekStart));
           setCurrentWeek(Math.min(Math.max(1, week), targetSchedule.totalWeeks));
         }
+      } else {
+        setSchedule(null);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载失败');
@@ -566,11 +582,13 @@ export default function SchedulePage() {
     );
   }
 
+
+
   if (!schedule) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-4 p-4">
         <div className="text-center space-y-2">
-          <h2 className="text-xl font-semibold">欢迎使用 SmartSchedule</h2>
+          <h2 className="text-xl font-semibold">Hi！{username || '用户'}</h2>
           <p className="text-muted-foreground">还没有课表，立即创建或导入一个吧</p>
         </div>
         <div className="flex gap-3">

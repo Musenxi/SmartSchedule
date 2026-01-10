@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { X, Calendar as CalendarIcon, Trash2, Plus, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -13,8 +14,16 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 
+import {
+    Dialog,
+    DialogContent,
+    DialogTitle,
+    DialogDescription,
+} from '@/components/ui/dialog';
+
 import { Schedule, TimeTable } from '@/types';
 import { TimeTableListModal } from './TimeTableListModal';
+import { CourseListModal } from './CourseListModal';
 import { Modal } from '@/components/ui/Modal';
 
 interface ScheduleManagerModalProps {
@@ -37,14 +46,17 @@ export function ScheduleManagerModal({
     onTimeTablesRefresh,
 }: ScheduleManagerModalProps) {
     const [name, setName] = useState(schedule.name);
+    const router = useRouter();
     const [firstWeekStart, setFirstWeekStart] = useState<string>(
         new Date(schedule.firstWeekStart).toISOString().split('T')[0]
     );
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+    const [isCoursesOpen, setIsCoursesOpen] = useState(false);
 
     const [totalWeeks, setTotalWeeks] = useState(schedule.totalWeeks);
     const [isDeleting, setIsDeleting] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     // TimeTable List State
     const [isTimeListOpen, setIsTimeListOpen] = useState(false);
@@ -71,9 +83,11 @@ export function ScheduleManagerModal({
         }
     };
 
-    const handleDelete = async () => {
-        if (!confirm('确定要删除这个课表吗？此操作无法撤销。')) return;
+    const handleDelete = () => {
+        setShowDeleteConfirm(true);
+    };
 
+    const confirmDelete = async () => {
         setIsDeleting(true);
         try {
             await onDelete(schedule.id);
@@ -83,6 +97,7 @@ export function ScheduleManagerModal({
             alert('删除失败');
         } finally {
             setIsDeleting(false);
+            setShowDeleteConfirm(false);
         }
     };
 
@@ -103,7 +118,7 @@ export function ScheduleManagerModal({
                 </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">课表名称</label>
                     <input
@@ -173,35 +188,65 @@ export function ScheduleManagerModal({
                     </button>
                 </div>
 
-                <div className="pt-4 border-t border-border flex items-center justify-between">
-                    <button
-                        onClick={handleDelete}
-                        disabled={isDeleting || schedule.isActive}
-                        className={cn(
-                            "flex items-center gap-2 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors",
-                            schedule.isActive && "opacity-50 cursor-not-allowed hidden"
-                        )}
-                        title={schedule.isActive ? "不能删除当前正在使用的课表" : "删除课表"}
-                    >
-                        <Trash2 className="w-4 h-4" />
-                        <span>删除课表</span>
-                    </button>
-
-                    <div className="flex gap-3">
+                {/* Course Management */}
+                <div className="space-y-2 pt-2">
+                    <label className="text-sm font-medium text-muted-foreground">课程管理</label>
+                    <div className="grid grid-cols-1 gap-2">
                         <button
-                            onClick={onClose}
-                            className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                            onClick={() => {
+                                onClose();
+                                router.push(`/import?target=add&scheduleId=${schedule.id}`);
+                            }}
+                            className="w-full flex items-center justify-between px-3 py-2 bg-background border border-input rounded-lg hover:bg-muted/50 transition-colors"
                         >
-                            取消
+                            <div className="flex items-center gap-2 text-sm text-foreground">
+                                <Plus className="w-4 h-4 text-muted-foreground" />
+                                <span>导入新课程</span>
+                            </div>
+                            <div className="text-xs text-primary font-medium">添加</div>
                         </button>
+
                         <button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="flex items-center gap-2 px-6 py-2 text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 rounded-lg transition-opacity"
+                            onClick={() => setIsCoursesOpen(true)}
+                            className="w-full flex items-center justify-between px-3 py-2 bg-background border border-input rounded-lg hover:bg-muted/50 transition-colors"
                         >
-                            {saving ? '保存中...' : '保存'}
+                            <div className="flex items-center gap-2 text-sm text-foreground">
+                                <BookOpen className="w-4 h-4 text-muted-foreground" />
+                                <span>已添课程 ({schedule.courses?.length || 0})</span>
+                            </div>
+                            <div className="text-xs text-primary font-medium">查看</div>
                         </button>
                     </div>
+                </div>
+            </div>
+
+            <div className="p-6 pt-4 border-t border-border flex items-center justify-between bg-card mt-auto rounded-b-xl">
+                <button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className={cn(
+                        "flex items-center gap-2 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                    )}
+                    title="删除课表"
+                >
+                    <Trash2 className="w-4 h-4" />
+                    <span>删除课表</span>
+                </button>
+
+                <div className="flex gap-3">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                    >
+                        取消
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="flex items-center gap-2 px-6 py-2 text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 rounded-lg transition-opacity"
+                    >
+                        {saving ? '保存中...' : '保存'}
+                    </button>
                 </div>
             </div>
 
@@ -215,8 +260,53 @@ export function ScheduleManagerModal({
                 onTimeTablesRefresh={async () => {
                     if (onTimeTablesRefresh) await onTimeTablesRefresh();
                 }}
+                hasBackdrop={false}
+                zIndex={70}
             />
+
+            {/* Course List Modal */}
+            <CourseListModal
+                isOpen={isCoursesOpen}
+                onClose={() => setIsCoursesOpen(false)}
+                courses={schedule.courses || []}
+                scheduleName={schedule.name}
+                periods={activeTimeTable?.periods || []}
+                onRefresh={() => {
+                    router.refresh();
+                }}
+                hasBackdrop={false} // Disable redundant backdrop
+                zIndex={70}
+            />
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <DialogContent className="sm:max-w-[425px] z-[70]" showCloseButton={false}>
+                    <div className="flex flex-col gap-4 py-4">
+                        <div className="flex flex-col gap-2">
+                            <DialogTitle className="text-lg font-semibold text-foreground">确认删除课表</DialogTitle>
+                            <DialogDescription className="text-sm text-muted-foreground">
+                                您确定要删除"{schedule.name}"吗？此操作无法撤销，删除后所有相关课程数据都将丢失。
+                            </DialogDescription>
+                        </div>
+                        <div className="flex justify-end gap-3 mt-2">
+                            <button
+                                onClick={() => setShowDeleteConfirm(false)}
+                                disabled={isDeleting}
+                                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                disabled={isDeleting}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg transition-colors"
+                            >
+                                {isDeleting ? '删除中...' : '确认删除'}
+                            </button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </Modal >
     );
 }
-

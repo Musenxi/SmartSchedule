@@ -16,9 +16,11 @@ interface CourseDetailModalProps {
     currentWeek?: number;
     selectedTimeIndex?: number;
     onRefresh?: () => void;
+    zIndex?: number;
+    hasBackdrop?: boolean;
 }
 
-export function CourseDetailModal({ isOpen, onClose, course, onEdit, periods, currentWeek = 1, selectedTimeIndex = 0, onRefresh }: CourseDetailModalProps) {
+export function CourseDetailModal({ isOpen, onClose, course, onEdit, periods, currentWeek = 1, selectedTimeIndex = 0, onRefresh, zIndex = 50, hasBackdrop = true }: CourseDetailModalProps) {
     const { deleteCourse, updateCourse } = useCourses();
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteOptions, setShowDeleteOptions] = useState(false);
@@ -213,7 +215,8 @@ ${base64Data}
             <Modal
                 isOpen={isOpen}
                 onClose={onClose}
-                zIndex={50}
+                zIndex={zIndex}
+                hasBackdrop={hasBackdrop}
                 className="bg-card w-full max-w-sm max-h-[90vh] p-0 flex flex-col"
             >
                 <div className="flex flex-col h-full overflow-hidden">

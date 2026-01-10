@@ -42,7 +42,7 @@ export function BrowserGrabber({ onUploadComplete }: BrowserGrabberProps) {
 
     return (
         <div className="space-y-6 max-w-2xl mx-auto">
-            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl flex gap-3 text-blue-700 dark:text-blue-400 text-sm">
+            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl flex gap-3 text-blue-900 dark:text-blue-400 text-sm">
                 <Sparkles className="w-5 h-5 flex-shrink-0" />
                 <div className="space-y-1">
                     <p className="font-medium">教务系统自动抓取技巧</p>

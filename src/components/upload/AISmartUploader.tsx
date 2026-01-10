@@ -299,11 +299,11 @@ export function AISmartUploader({ onUploadComplete }: AISmartUploaderProps) {
             </button>
 
             {/* Info Notice */}
-            <div className="flex items-start gap-3 p-4 bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 rounded-lg">
-                <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-purple-900 dark:text-purple-100 space-y-1">
+            <div className="flex items-start gap-3 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl mt-6 text-blue-900 dark:text-blue-400 text-sm">
+                <Sparkles className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div className="space-y-1">
                     <p className="font-medium">AI 智能识别提示</p>
-                    <ul className="text-xs text-purple-700 dark:text-purple-200 space-y-1 list-disc list-inside">
+                    <ul className="text-xs space-y-1 list-disc list-inside opacity-90">
                         <li>确保图片或PDF清晰可见，包含完整的课表信息</li>
                         <li>支持各类教务系统导出的课表格式</li>
                         <li>AI将自动提取课程名称、教师、地点、时间等信息</li>

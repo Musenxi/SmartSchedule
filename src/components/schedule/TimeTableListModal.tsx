@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import { TimeTableEditorModal } from './TimeTableEditorModal';
 import { TimeTableSwitchConfigModal } from './TimeTableSwitchConfigModal';
 
+import { Modal } from '@/components/ui/Modal';
+
 interface TimeTableListModalProps {
     schedule: Schedule;
     timeTables: TimeTable[];
@@ -14,6 +16,8 @@ interface TimeTableListModalProps {
     onClose: () => void;
     onScheduleUpdate: (id: string, data: Partial<Schedule>) => Promise<void>;
     onTimeTablesRefresh: () => Promise<void>;
+    zIndex?: number;
+    hasBackdrop?: boolean;
 }
 
 const getDefaultPeriods = () => {
@@ -38,6 +42,8 @@ export function TimeTableListModal({
     onClose,
     onScheduleUpdate,
     onTimeTablesRefresh,
+    zIndex = 50,
+    hasBackdrop = false,
 }: TimeTableListModalProps) {
     const [editingTimeTable, setEditingTimeTable] = useState<TimeTable | null>(null);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -136,161 +142,165 @@ export function TimeTableListModal({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-md bg-card rounded-2xl shadow-xl border border-border overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
-                <div className="px-6 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-primary" />
-                        上课时间列表
-                    </h3>
-                    <button
-                        onClick={onClose}
-                        className="p-1 text-muted-foreground hover:bg-muted rounded-full transition-colors"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            zIndex={zIndex}
+            hasBackdrop={hasBackdrop} // Default to false since it's usually nested, but let's make it configurable via props if needed
+            className="w-full max-w-md bg-card rounded-2xl shadow-xl border border-border overflow-hidden flex flex-col max-h-[85vh]"
+        >
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-primary" />
+                    上课时间列表
+                </h3>
+                <button
+                    onClick={onClose}
+                    className="p-1 text-muted-foreground hover:bg-muted rounded-full transition-colors"
+                >
+                    <X className="w-5 h-5" />
+                </button>
+            </div>
 
-                {/* Auto Switch Toggle Section */}
-                <div className="px-6 py-3 bg-muted/20 border-b border-border flex items-center justify-between">
-                    <div className="flex flex-col gap-0.5">
-                        <span className="text-sm font-medium">自动切换夏冬令时</span>
-                        <span className="text-xs text-muted-foreground">根据日期自动变更时间表</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        {schedule.enableAutoTimeTableSwitch && (
-                            <button
-                                onClick={() => setIsConfigOpen(true)}
-                                className="text-xs text-primary font-medium hover:underline flex items-center gap-1"
-                            >
-                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                                设置规则
-                            </button>
-                        )}
+            {/* Auto Switch Toggle Section */}
+            <div className="px-6 py-3 bg-muted/20 border-b border-border flex items-center justify-between">
+                <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium">自动切换夏冬令时</span>
+                    <span className="text-xs text-muted-foreground">根据日期自动变更时间表</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    {schedule.enableAutoTimeTableSwitch && (
                         <button
-                            onClick={async () => {
-                                if (toggling) return;
-                                setToggling(true);
-                                const newValue = !schedule.enableAutoTimeTableSwitch;
-                                try {
-                                    await onScheduleUpdate(schedule.id, {
-                                        enableAutoTimeTableSwitch: newValue
-                                    });
-                                    if (newValue) {
-                                        setIsPendingEnable(true);
-                                        setIsConfigOpen(true);
-                                    }
-                                } finally {
-                                    setToggling(false);
-                                }
-                            }}
-                            className={cn(
-                                "w-10 h-6 rounded-full transition-colors relative focus:outline-none focus:ring-2 focus:ring-primary/20",
-                                schedule.enableAutoTimeTableSwitch ? "bg-primary" : "bg-muted-foreground/30"
-                            )}
+                            onClick={() => setIsConfigOpen(true)}
+                            className="text-xs text-primary font-medium hover:underline flex items-center gap-1"
                         >
-                            <div className={cn(
-                                "absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm",
-                                schedule.enableAutoTimeTableSwitch ? "translate-x-4" : ""
-                            )} />
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                            设置规则
                         </button>
-                    </div>
-                </div>
-
-                <div className="p-4 overflow-y-auto flex-1 custom-scrollbar space-y-3">
-                    {timeTables.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground">
-                            还没有设置时间表
-                        </div>
                     )}
-
-                    {timeTables.map((timeTable) => {
-                        const isActive = timeTable.id === activeId;
-                        return (
-                            <div
-                                key={timeTable.id}
-                                className={cn(
-                                    "group flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer",
-                                    isActive
-                                        ? "bg-primary/5 border-primary/20"
-                                        : "bg-card border-border hover:border-primary/50"
-                                )}
-                                onClick={() => handleSetActive(timeTable.id)}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className={cn(
-                                        "w-5 h-5 rounded-full flex items-center justify-center border transition-colors",
-                                        isActive
-                                            ? "bg-primary border-primary text-primary-foreground"
-                                            : "border-muted-foreground/30 group-hover:border-primary/50"
-                                    )}>
-                                        {isActive && <Check className="w-3 h-3" />}
-                                    </div>
-                                    <div>
-                                        <div className={cn("font-medium", isActive && "text-primary")}>
-                                            {timeTable.name}
-                                        </div>
-                                        {timeTable.isDefault && (
-                                            <div className="text-xs text-muted-foreground">系统默认</div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-1">
-                                    {/* Delete Button (Only if not default and not active) */}
-                                    {!timeTable.isDefault && !isActive && (
-                                        <button
-                                            onClick={(e) => handleDelete(e, timeTable.id)}
-                                            disabled={deletingId === timeTable.id}
-                                            className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                            title="删除"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    )}
-
-                                    {/* Edit Button */}
-                                    <button
-                                        onClick={(e) => handleEdit(e, timeTable)}
-                                        className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                                        title="编辑时间"
-                                    >
-                                        <ChevronRight className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-
-                <div className="p-4 border-t border-border bg-card flex-shrink-0">
                     <button
-                        onClick={handleCreate}
-                        disabled={isCreating}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 rounded-lg transition-opacity"
+                        onClick={async () => {
+                            if (toggling) return;
+                            setToggling(true);
+                            const newValue = !schedule.enableAutoTimeTableSwitch;
+                            try {
+                                await onScheduleUpdate(schedule.id, {
+                                    enableAutoTimeTableSwitch: newValue
+                                });
+                                if (newValue) {
+                                    setIsPendingEnable(true);
+                                    setIsConfigOpen(true);
+                                }
+                            } finally {
+                                setToggling(false);
+                            }
+                        }}
+                        className={cn(
+                            "w-10 h-6 rounded-full transition-colors relative focus:outline-none focus:ring-2 focus:ring-primary/20",
+                            schedule.enableAutoTimeTableSwitch ? "bg-primary" : "bg-muted-foreground/30"
+                        )}
                     >
-                        <Plus className="w-4 h-4" />
-                        <span>新建时间表</span>
+                        <div className={cn(
+                            "absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm",
+                            schedule.enableAutoTimeTableSwitch ? "translate-x-4" : ""
+                        )} />
                     </button>
                 </div>
             </div>
 
-            {/* Nested Editor Modal */}
-            {
-                editingTimeTable && (
-                    <TimeTableEditorModal
-                        isOpen={isEditorOpen}
-                        timeTable={editingTimeTable}
-                        onClose={() => {
-                            setIsEditorOpen(false);
-                            setEditingTimeTable(null);
-                        }}
-                        onSave={async () => {
-                            await onTimeTablesRefresh();
-                        }}
-                    />
-                )
-            }
+            <div className="p-4 overflow-y-auto flex-1 custom-scrollbar space-y-3">
+                {timeTables.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                        还没有设置时间表
+                    </div>
+                )}
+
+                {timeTables.map((timeTable) => {
+                    const isActive = timeTable.id === activeId;
+                    return (
+                        <div
+                            key={timeTable.id}
+                            className={cn(
+                                "group flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer",
+                                isActive
+                                    ? "bg-primary/5 border-primary/20"
+                                    : "bg-card border-border hover:border-primary/50"
+                            )}
+                            onClick={() => handleSetActive(timeTable.id)}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={cn(
+                                    "w-5 h-5 rounded-full flex items-center justify-center border transition-colors",
+                                    isActive
+                                        ? "bg-primary border-primary text-primary-foreground"
+                                        : "border-muted-foreground/30 group-hover:border-primary/50"
+                                )}>
+                                    {isActive && <Check className="w-3 h-3" />}
+                                </div>
+                                <div>
+                                    <div className={cn("font-medium", isActive && "text-primary")}>
+                                        {timeTable.name}
+                                    </div>
+                                    {timeTable.isDefault && (
+                                        <div className="text-xs text-muted-foreground">系统默认</div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                                {/* Delete Button (Only if not default and not active) */}
+                                {!timeTable.isDefault && !isActive && (
+                                    <button
+                                        onClick={(e) => handleDelete(e, timeTable.id)}
+                                        disabled={deletingId === timeTable.id}
+                                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                        title="删除"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                )}
+
+                                {/* Edit Button */}
+                                <button
+                                    onClick={(e) => handleEdit(e, timeTable)}
+                                    className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                    title="编辑时间"
+                                >
+                                    <ChevronRight className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div className="p-4 border-t border-border bg-card flex-shrink-0">
+                <button
+                    onClick={handleCreate}
+                    disabled={isCreating}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 rounded-lg transition-opacity"
+                >
+                    <Plus className="w-4 h-4" />
+                    <span>新建时间表</span>
+                </button>
+            </div>
+
+            {/* Nested Editor Modal - Needs zIndex handling */}
+            {editingTimeTable && (
+                <TimeTableEditorModal
+                    isOpen={isEditorOpen}
+                    timeTable={editingTimeTable}
+                    onClose={() => {
+                        setIsEditorOpen(false);
+                        setEditingTimeTable(null);
+                    }}
+                    onSave={async () => {
+                        await onTimeTablesRefresh();
+                    }}
+                    zIndex={80}
+                    hasBackdrop={false}
+                />
+            )}
 
             {/* Config Modal */}
             <TimeTableSwitchConfigModal
@@ -310,6 +320,6 @@ export function TimeTableListModal({
                 }}
                 timeTables={timeTables}
             />
-        </div >
+        </Modal>
     );
 }

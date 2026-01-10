@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Upload, FileSpreadsheet, X, AlertCircle, Loader2, Download } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, AlertCircle, Loader2, Download, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseCSV } from '@/lib/import/csv-parser';
 
@@ -92,14 +92,16 @@ export function CSVUploader({ onUploadComplete }: CSVUploaderProps) {
 
     return (
         <div className="w-full max-w-md mx-auto">
-            {/* Notice */}
-            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg text-sm">
-                <p className="font-medium text-amber-800 dark:text-amber-300 mb-1">导入说明</p>
-                <ul className="text-xs text-amber-700 dark:text-amber-200 space-y-0.5 list-disc list-inside">
-                    <li>周次支持斜杠分隔，如：1/3/5、1-8/10-16</li>
-                    <li>日期列格式为 YYYY/MM/DD，多日期用 - 分隔</li>
-                    <li>如：2025/03/15-2025/03/22</li>
-                </ul>
+            <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex gap-3 text-green-900 dark:text-green-400 text-sm mb-4">
+                <Sparkles className="w-5 h-5 flex-shrink-0" />
+                <div className="space-y-1">
+                    <p className="font-medium">导入说明</p>
+                    <ul className="text-xs space-y-0.5 list-disc list-inside opacity-90">
+                        <li>周次支持斜杠分隔，如：1/3/5、1-8/10-16</li>
+                        <li>单独以日期导入（可选）格式为 YYYY/MM/DD，多日期用 - 分隔</li>
+                        <li>如：2025/03/15 - 2025/03/22</li>
+                    </ul>
+                </div>
             </div>
 
             <div className="mb-6 flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-border">
