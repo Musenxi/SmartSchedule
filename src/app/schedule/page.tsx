@@ -745,6 +745,7 @@ export default function SchedulePage() {
           onClose={handleCloseCourseModal}
           course={editingCourse}
           totalWeeks={schedule.totalWeeks}
+          startDate={schedule.firstWeekStart instanceof Date ? schedule.firstWeekStart.toISOString() : String(schedule.firstWeekStart)}
           onSave={() => fetchSchedule(true)}
           disableAnimation={isTransitioningFromDetail}
           hasBackdrop={!isTransitioningFromDetail}

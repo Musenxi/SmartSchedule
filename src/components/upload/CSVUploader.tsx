@@ -72,9 +72,15 @@ export function CSVUploader({ onUploadComplete }: CSVUploaderProps) {
     };
 
     const downloadTemplate = () => {
-        const headers = '课程名称, 教师, 地点, 星期 (1-7), 开始节次, 结束节次, 周次范围 (1-16)\n';
-        const example = '操作系统, 张老师, 实验楼302, 1, 1, 2, 1-16\n数据结构, 李老师, 教学楼A101, 3, 5, 7, 1-16';
-        const blob = new Blob(['\ufeff' + headers + example], { type: 'text/csv;charset=utf-8;' });
+        const headers = '课程名称,教师,地点,星期,开始节次,结束节次,周次,日期\n';
+        const examples = [
+            '高等数学,张老师,教学楼 A101,1,1,2,1-8/10-16,',
+            '大学英语,李老师,外语楼 201,2,3,4,1/3/5/7-11,',
+            '数据结构,王老师,实验楼 302,3,5,6,1/3/5/7,',
+            '操作系统,赵老师,计算机楼401,4,7,8,2-16单,',
+            '补课-高数,张老师,教学楼A101,6,1,2,,2025/03/15-2025/03/22',
+        ].join('\n');
+        const blob = new Blob(['\ufeff' + headers + examples], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -86,14 +92,24 @@ export function CSVUploader({ onUploadComplete }: CSVUploaderProps) {
 
     return (
         <div className="w-full max-w-md mx-auto">
+            {/* Notice */}
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg text-sm">
+                <p className="font-medium text-amber-800 dark:text-amber-300 mb-1">导入说明</p>
+                <ul className="text-xs text-amber-700 dark:text-amber-200 space-y-0.5 list-disc list-inside">
+                    <li>周次支持斜杠分隔，如：1/3/5、1-8/10-16</li>
+                    <li>日期列格式为 YYYY/MM/DD，多日期用 - 分隔</li>
+                    <li>如：2025/03/15-2025/03/22</li>
+                </ul>
+            </div>
+
             <div className="mb-6 flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-border">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center text-green-600">
                         <FileSpreadsheet className="w-5 h-5" />
                     </div>
                     <div className="text-sm">
-                        <div className="font-medium text-foreground">标准课程模版.csv</div>
-                        <div className="text-muted-foreground">使用模版以确保 100% 识别成功</div>
+                        <div className="font-medium text-foreground">课程导入模版.csv</div>
+                        <div className="text-muted-foreground">支持单双周，如 1-16单、2-16双</div>
                     </div>
                 </div>
                 <button

@@ -33,6 +33,7 @@ interface CourseFormProps {
     loading?: boolean;
     submitLabel?: string;
     totalWeeks?: number;
+    startDate?: string;
 }
 
 export function CourseForm({
@@ -41,7 +42,8 @@ export function CourseForm({
     onCancel,
     loading = false,
     submitLabel = '保存',
-    totalWeeks = 20
+    totalWeeks = 20,
+    startDate
 }: CourseFormProps) {
     // Form state
     const [name, setName] = useState('');
@@ -53,6 +55,7 @@ export function CourseForm({
 
     // Editor state
     const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
+    const [isCreatingSlot, setIsCreatingSlot] = useState(false);
 
     useEffect(() => {
         if (initialData) {
@@ -79,18 +82,7 @@ export function CourseForm({
     };
 
     const addTimeSlot = () => {
-        const newSlot: CourseTime = {
-            id: crypto.randomUUID(),
-            courseId: '', // Placeholder
-            dayOfWeek: 1,
-            startPeriod: 1,
-            endPeriod: 2,
-            weekRange: '1-16',
-            teacher: teacher || '', // Inherit global teacher if set
-            location: ''
-        };
-        setTimes([...times, newSlot]);
-        setEditingSlotIndex(times.length); // Open editor for new slot
+        setIsCreatingSlot(true);
     };
 
     const removeTimeSlot = (index: number, e: React.MouseEvent) => {
@@ -109,10 +101,24 @@ export function CourseForm({
     const handleSlotUpdate = (updatedSlot: any) => {
         if (editingSlotIndex !== null) {
             const newTimes = [...times];
-            newTimes[editingSlotIndex] = updatedSlot;
+            // Merge existing ID and CourseID with updates
+            newTimes[editingSlotIndex] = {
+                ...times[editingSlotIndex],
+                ...updatedSlot
+            };
             setTimes(newTimes);
             setEditingSlotIndex(null);
         }
+    };
+
+    const handleCreateSlot = (newSlotInput: any) => {
+        const newSlot: CourseTime = {
+            id: crypto.randomUUID(),
+            courseId: '',
+            ...newSlotInput
+        };
+        setTimes([...times, newSlot]);
+        setIsCreatingSlot(false);
     };
 
     return (
@@ -238,7 +244,7 @@ export function CourseForm({
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <div className="font-medium text-base">
-                                                周{['日', '一', '二', '三', '四', '五', '六'][time.dayOfWeek]}
+                                                周{['', '一', '二', '三', '四', '五', '六', '日'][time.dayOfWeek]}
                                                 <span className="mx-2 text-muted-foreground">|</span>
                                                 {time.startTime && time.endTime ? (
                                                     <span>{time.startTime} - {time.endTime}</span>
@@ -275,9 +281,7 @@ export function CourseForm({
                 </div>
             </div>
 
-            {/* Time Slot Editor Modal - needs to be inside or handled by parent? 
-                It's a modal over this modal.
-            */}
+            {/* Time Slot Editor for Editing Existing */}
             {editingSlotIndex !== null && times[editingSlotIndex] && (
                 <TimeSlotEditor
                     isOpen={true}
@@ -288,9 +292,32 @@ export function CourseForm({
                         location: times[editingSlotIndex].location || undefined,
                         startTime: times[editingSlotIndex].startTime || undefined,
                         endTime: times[editingSlotIndex].endTime || undefined,
+                        specificDate: times[editingSlotIndex].specificDate || undefined,
+                        specificDates: times[editingSlotIndex].specificDates || undefined,
                     }}
                     onChange={handleSlotUpdate}
                     totalWeeks={totalWeeks}
+                    startDate={startDate}
+                    hasBackdrop={false}
+                />
+            )}
+
+            {/* Time Slot Editor for Creating New */}
+            {isCreatingSlot && (
+                <TimeSlotEditor
+                    isOpen={true}
+                    onClose={() => setIsCreatingSlot(false)}
+                    value={{
+                        dayOfWeek: 1,
+                        startPeriod: 1,
+                        endPeriod: 2,
+                        weekRange: '1-16',
+                        teacher: teacher || undefined,
+                        location: undefined,
+                    }}
+                    onChange={handleCreateSlot}
+                    totalWeeks={totalWeeks}
+                    startDate={startDate}
                     hasBackdrop={false}
                 />
             )}

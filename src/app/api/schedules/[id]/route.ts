@@ -88,6 +88,39 @@ export async function PUT(
                 data: { isActive: false }
             });
         }
+        // If firstWeekStart changed, recalculate weekRange for all CourseTime with specificDate
+        if (validated.firstWeekStart) {
+            const newStartDate = new Date(validated.firstWeekStart);
+            newStartDate.setHours(0, 0, 0, 0);
+
+            // Get all courses in this schedule with times that have specificDate
+            const coursesWithSpecificDates = await prisma.course.findMany({
+                where: { scheduleId: id },
+                include: {
+                    times: {
+                        where: { specificDate: { not: null } }
+                    }
+                }
+            });
+
+            // Recalculate week numbers for each time with specificDate
+            for (const course of coursesWithSpecificDates) {
+                for (const time of course.times) {
+                    if (time.specificDate) {
+                        const specificDate = new Date(time.specificDate);
+                        specificDate.setHours(0, 0, 0, 0);
+                        const diffTime = specificDate.getTime() - newStartDate.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        const newWeekNum = Math.floor(diffDays / 7) + 1;
+
+                        await prisma.courseTime.update({
+                            where: { id: time.id },
+                            data: { weekRange: newWeekNum.toString() }
+                        });
+                    }
+                }
+            }
+        }
 
         const schedule = await prisma.schedule.update({
             where: { id },

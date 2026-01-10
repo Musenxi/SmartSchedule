@@ -3,10 +3,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { CourseTimeInput } from '@/types';
-import { ChevronRight, X, Circle, CheckCircle2 } from 'lucide-react';
+import { ChevronRight, X, Circle, CheckCircle2, Calendar as CalendarIcon } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { parseWeekRange, formatWeekRange } from '@/lib/date-utils';
 import { Modal } from '@/components/ui/Modal';
+import { format } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import { CustomCalendar } from '@/components/ui/CustomCalendar';
 
 interface TimeSlotEditorProps {
     isOpen: boolean;
@@ -15,11 +23,12 @@ interface TimeSlotEditorProps {
     onChange: (value: CourseTimeInput) => void;
     totalWeeks?: number;
     hasBackdrop?: boolean;
+    startDate?: string;
 }
 
 const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
-export function TimeSlotEditor({ isOpen, onClose, value, onChange, totalWeeks = 20, hasBackdrop = true }: TimeSlotEditorProps) {
+export function TimeSlotEditor({ isOpen, onClose, value, onChange, totalWeeks = 20, startDate, hasBackdrop = true }: TimeSlotEditorProps) {
     const [localValue, setLocalValue] = useState<CourseTimeInput>(value);
 
     // Generate weeks grid based on totalWeeks
@@ -33,7 +42,12 @@ export function TimeSlotEditor({ isOpen, onClose, value, onChange, totalWeeks = 
 
     useEffect(() => {
         if (isOpen) {
-            setLocalValue(value);
+            // Migration: Ensure specificDates is populated from specificDate if needed
+            const dates = value.specificDates || (value.specificDate ? [value.specificDate] : []);
+            setLocalValue({
+                ...value,
+                specificDates: dates
+            });
             // Use robust parser from date-utils
             const weeks = parseWeekRange(value.weekRange);
             setActiveWeeks(weeks);
@@ -109,6 +123,42 @@ export function TimeSlotEditor({ isOpen, onClose, value, onChange, totalWeeks = 
         }
     };
 
+    const getWeekNumber = (dateStr: string) => {
+        if (!startDate) return null;
+        const start = new Date(startDate);
+        const d = new Date(dateStr);
+        d.setHours(0, 0, 0, 0);
+        start.setHours(0, 0, 0, 0);
+        const diffTime = d.getTime() - start.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return Math.floor(diffDays / 7) + 1;
+    };
+
+    const handleRemoveDate = (index: number) => {
+        const dateToRemove = localValue.specificDates?.[index];
+        const newDates = localValue.specificDates?.filter((_, i) => i !== index);
+
+        setLocalValue(prev => ({
+            ...prev,
+            specificDates: newDates,
+            specificDate: newDates?.[0]
+        }));
+
+        // If startDate is available, check if we should deselect the week
+        if (startDate && dateToRemove) {
+            const weekToRemove = getWeekNumber(dateToRemove);
+
+            if (weekToRemove !== null) {
+                // Check if any OTHER date is in this week
+                const hasOtherDateInWeek = newDates?.some(d => getWeekNumber(d) === weekToRemove);
+
+                if (!hasOtherDateInWeek) {
+                    setActiveWeeks(prev => prev.filter(w => w !== weekToRemove));
+                }
+            }
+        }
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -162,12 +212,36 @@ export function TimeSlotEditor({ isOpen, onClose, value, onChange, totalWeeks = 
                 <div className="space-y-3">
                     <label className="text-sm font-medium">星期</label>
                     <div className="grid grid-cols-7 gap-1 bg-muted/30 p-1 rounded-xl">
-                        {WEEKDAYS.slice(1).concat(WEEKDAYS[0]).map((d, i) => { // Shift Sun to end for display if needed, but standard is usually Mon-Sun
-                            const dayIndex = i + 1 > 6 ? 0 : i + 1; // 1-6, 0(Sun)
+                        {WEEKDAYS.slice(1).concat(WEEKDAYS[0]).map((d, i) => {
+                            // i=0(Mon)->1, ..., i=5(Sat)->6, i=6(Sun)->7
+                            const dayIndex = i + 1;
+
                             return (
                                 <button
                                     key={dayIndex}
-                                    onClick={() => setLocalValue(prev => ({ ...prev, dayOfWeek: dayIndex }))}
+                                    onClick={() => {
+                                        setLocalValue(prev => {
+                                            const updates: any = { dayOfWeek: dayIndex };
+
+                                            // If specificDate is set, shift it to match the new dayOfWeek
+                                            if (prev.specificDate) {
+                                                const current = new Date(prev.specificDate);
+                                                if (!isNaN(current.getTime())) {
+                                                    // Current day of week (1-7)
+                                                    const currentDay = current.getDay() === 0 ? 7 : current.getDay();
+                                                    const diff = dayIndex - currentDay;
+
+                                                    if (diff !== 0) {
+                                                        const newDate = new Date(current);
+                                                        newDate.setDate(current.getDate() + diff);
+                                                        updates.specificDate = format(newDate, 'yyyy-MM-dd');
+                                                    }
+                                                }
+                                            }
+
+                                            return { ...prev, ...updates };
+                                        });
+                                    }}
                                     className={cn(
                                         "h-9 rounded-lg text-xs font-medium transition-all",
                                         localValue.dayOfWeek === dayIndex
@@ -286,6 +360,94 @@ export function TimeSlotEditor({ isOpen, onClose, value, onChange, totalWeeks = 
                             </div>
                         </div>
                     )}
+                </div>
+
+                <div className="h-px bg-border" />
+
+                {/* Specific Date */}
+                <div className="space-y-3">
+                    <label className="text-sm font-medium">指定日期 (可选)</label>
+                    <div className="bg-amber-50 dark:bg-amber-500/10 p-3 rounded-xl border border-amber-100 dark:border-amber-500/20 space-y-2">
+                        <div className="text-xs text-amber-700 dark:text-amber-300">
+                            设置具体日期后，课程将会在该日期显示。
+                        </div>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <button
+                                    type="button"
+                                    className={cn(
+                                        "w-full p-2.5 rounded-lg bg-white dark:bg-card border border-border/50 shadow-sm outline-none focus:border-primary transition-colors text-sm text-left flex items-center justify-between",
+                                        !localValue.specificDate && "text-muted-foreground"
+                                    )}
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+                                        {localValue.specificDate ? format(new Date(localValue.specificDate), 'yyyy年M月d日', { locale: zhCN }) : '选择日期'}
+                                    </span>
+                                    {localValue.specificDate && (
+                                        <div
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                // Calculate week to remove
+                                                const weekToRemove = getWeekNumber(localValue.specificDate!);
+
+                                                setLocalValue(prev => ({
+                                                    ...prev,
+                                                    specificDate: undefined,
+                                                    specificDates: []
+                                                }));
+
+                                                // Deselect week
+                                                if (weekToRemove !== null) {
+                                                    setActiveWeeks(prev => prev.filter(w => w !== weekToRemove));
+                                                }
+                                            }}
+                                            className="p-1 hover:bg-black/5 rounded-full transition-colors"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                        </div>
+                                    )}
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 border-none shadow-none bg-transparent z-[100]" align="start" side="bottom" sideOffset={8}>
+                                <CustomCalendar
+                                    selectedDate={localValue.specificDate ? new Date(localValue.specificDate) : undefined}
+                                    onSelect={(d) => {
+                                        const dateStr = format(d, 'yyyy-MM-dd');
+                                        const oldDate = localValue.specificDate;
+
+                                        setLocalValue(prev => ({
+                                            ...prev,
+                                            specificDate: dateStr,
+                                            specificDates: [dateStr]
+                                        }));
+
+                                        // Auto calculate day of week
+                                        const date = new Date(dateStr);
+                                        if (!isNaN(date.getTime())) {
+                                            const day = date.getDay();
+                                            setLocalValue(prev => ({
+                                                ...prev,
+                                                dayOfWeek: day === 0 ? 7 : day // Convert Sunday(0) to 7
+                                            }));
+                                        }
+
+                                        // Update Weeks using helper
+                                        if (startDate) {
+                                            const newWeekNum = getWeekNumber(dateStr);
+                                            const oldWeekNum = oldDate ? getWeekNumber(oldDate) : null;
+
+                                            if (newWeekNum !== null && newWeekNum >= 1 && newWeekNum <= totalWeeks) {
+                                                // STRICT REQUIREMENT: If specific date is set, ONLY that week is selected.
+                                                setActiveWeeks([newWeekNum]);
+                                            }
+                                        }
+                                    }}
+                                    className="bg-card border border-border shadow-xl rounded-xl"
+                                />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
                 </div>
 
                 <div className="h-px bg-border" />

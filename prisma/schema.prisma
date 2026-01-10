@@ -25,6 +25,11 @@ model User {
   winterStartDate     String?  // "MM-DD" 如 "10-01"
   winterEndDate       String?  // "MM-DD" 如 "04-30"
   summerTimeTableId   String?
+  // AI 集成配置
+  aiProvider          String?  // 'gemini', 'openai', etc.
+  aiModel             String?  // e.g. 'gemini-3-flash-preview'
+  aiApiKey            String?  // Encrypted API key
+  aiEnabled           Boolean  @default(false)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
@@ -70,17 +75,18 @@ model Course {
 
 // 课程时间段
 model CourseTime {
-  id          String  @id @default(cuid())
+  id          String    @id @default(cuid())
   courseId    String
-  course      Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  dayOfWeek   Int     // 星期几：1-7
-  startPeriod Int     // 开始节次
-  endPeriod   Int     // 结束节次
-  weekRange   String  // 周次范围："1-16" 或 "1,3,5,7-10"
-  teacher     String? // 教师
-  location    String? // 地点
-  startTime   String? // 自定义开始时间 "HH:mm"
-  endTime     String? // 自定义结束时间 "HH:mm"
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  dayOfWeek   Int       // 星期几：1-7
+  startPeriod Int       // 开始节次
+  endPeriod   Int       // 结束节次
+  weekRange   String    // 周次范围："1-16" 或 "1,3,5,7-10"
+  teacher     String?   // 教师
+  location    String?   // 地点
+  startTime   String?   // 自定义开始时间 "HH:mm"
+  endTime     String?   // 自定义结束时间 "HH:mm"
+  specificDate DateTime? // 特殊日期（用于调课/补课，格式 YYYY-MM-DD）
 
   @@map("course_times")
 }

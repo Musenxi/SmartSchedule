@@ -59,8 +59,10 @@ export function formatWeekdayShort(dayOfWeek: number): string {
 // 支持格式: "1-16", "1-17周(单)", "1-17(双)", "1,3,5,7-10", "1-6周,8-10周(双)"
 export function parseWeekRange(weekRange: string): number[] {
     const weeks: Set<number> = new Set();
-    // Normalize commas and remove whitespace
-    const normalized = weekRange.replace(/，/g, ',').trim();
+    // User request: Cancel support for commas, use slash only.
+    // We replace slash with comma (internal separator) but do NOT normalize Chinese/English commas.
+    // If input has commas, they will remain and break number parsing, effectively "cancelling" support.
+    const normalized = weekRange.replace(/\//g, ',').trim();
 
     // Split by comma FIRST to handle separate segments
     const parts = normalized.split(',').map(p => p.trim()).filter(p => p);

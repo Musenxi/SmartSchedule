@@ -10,6 +10,7 @@ interface CourseTimeSlot {
     weekRange: string;
     teacher?: string;
     location?: string;
+    specificDate?: string; // YYYY-MM-DD format
 }
 
 interface CourseInput {
@@ -55,16 +56,21 @@ export async function POST(req: NextRequest) {
             let firstWeekStart: Date;
 
             if (startDate) {
-                // If user provided startDate, use it directly (assuming it's formatted YYYY-MM-DD or similar)
-                firstWeekStart = new Date(startDate);
-                // Ensure it's treated as start of day local time or simply store as date
-                firstWeekStart.setHours(0, 0, 0, 0);
+                // Parse YYYY-MM-DD and create UTC noon to avoid date shift across timezones
+                // UTC noon ensures the date stays the same when converted to any timezone
+                const parts = startDate.split('-');
+                if (parts.length === 3) {
+                    firstWeekStart = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0));
+                } else {
+                    // Fallback for other formats
+                    firstWeekStart = new Date(startDate);
+                }
             } else {
-                // Fallback: This week's Monday
+                // Fallback: This week's Monday at UTC noon
                 const day = today.getDay();
                 const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-                firstWeekStart = new Date(today.setDate(diff));
-                firstWeekStart.setHours(0, 0, 0, 0);
+                const monday = new Date(today.setDate(diff));
+                firstWeekStart = new Date(Date.UTC(monday.getFullYear(), monday.getMonth(), monday.getDate(), 12, 0, 0));
             }
 
             const newSchedule = await prisma.schedule.create({
@@ -201,6 +207,7 @@ export async function POST(req: NextRequest) {
                                 weekRange: time.weekRange,
                                 teacher: time.teacher,
                                 location: time.location,
+                                specificDate: time.specificDate ? new Date(time.specificDate) : null,
                             })),
                         },
                     },

@@ -49,7 +49,7 @@ export default function LoginPage() {
           </div>
           <h2 className="text-2xl font-bold text-foreground">欢迎回来</h2>
           <p className="text-sm text-muted-foreground mt-2">
-            登录 SmartSchedule 智能课程表
+            登录智能课程表
           </p>
         </div>
 

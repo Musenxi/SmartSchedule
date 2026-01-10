@@ -63,7 +63,7 @@ export default function RegisterPage() {
                     </div>
                     <h2 className="text-2xl font-bold text-foreground">创建账户</h2>
                     <p className="text-sm text-muted-foreground mt-2">
-                        注册 SmartSchedule 智能课程表
+                        注册智能课程表
                     </p>
                 </div>
 
@@ -84,7 +84,7 @@ export default function RegisterPage() {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             className="w-full px-4 py-3 bg-background border border-input rounded-xl focus:ring-2 focus:ring-ring focus:border-input transition-all outline-none text-foreground placeholder:text-muted-foreground"
-                            placeholder="你的名字"
+                            placeholder="用户名"
                         />
                     </div>
 

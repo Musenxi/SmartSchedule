@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useSettings } from '@/hooks/use-settings';
 import { useUIStore } from '@/stores/ui-store';
-import { X, LogOut, Clock, ChevronRight, LayoutTemplate, Calendar } from 'lucide-react';
+import { X, LogOut, Clock, ChevronRight, LayoutTemplate, Calendar, Sparkles } from 'lucide-react';
 import { Schedule, TimeTable } from '@/types';
 import { TimeTableListModal } from '../schedule/TimeTableListModal';
 import { AppearanceSettingsModal } from './AppearanceSettingsModal';
+import { AISettingsModal } from './AISettingsModal';
 
 interface SettingsModalProps {
     currentSchedule?: Schedule;
@@ -19,6 +20,7 @@ export function SettingsModal({ currentSchedule, timeTables = [], onScheduleUpda
     const { settingsModalOpen, closeSettingsModal } = useUIStore();
     const [isTimeListOpen, setIsTimeListOpen] = useState(false);
     const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
+    const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
 
     if (!settingsModalOpen || !settings) return null;
 
@@ -141,6 +143,24 @@ export function SettingsModal({ currentSchedule, timeTables = [], onScheduleUpda
                                 </select>
                             </div>
                         </div>
+
+                        <div
+                            className="flex items-center justify-between p-4 bg-muted/30 rounded-xl cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => setIsAISettingsOpen(true)}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-purple-50 dark:bg-purple-500/10 rounded-lg text-purple-600 dark:text-purple-400">
+                                    <Sparkles className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <div className="font-medium">AI 助手配置</div>
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                        配置 AI API 用于智能解析
+                                    </div>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                        </div>
                     </section>
                     {/* 账户设置 */}
                     <section className="space-y-4">
@@ -193,6 +213,12 @@ export function SettingsModal({ currentSchedule, timeTables = [], onScheduleUpda
             <AppearanceSettingsModal
                 isOpen={isAppearanceOpen}
                 onClose={() => setIsAppearanceOpen(false)}
+            />
+
+            {/* Nested AI Settings Modal */}
+            <AISettingsModal
+                isOpen={isAISettingsOpen}
+                onClose={() => setIsAISettingsOpen(false)}
             />
         </div>
     );

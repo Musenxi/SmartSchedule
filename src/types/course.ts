@@ -23,6 +23,8 @@ export interface CourseTime {
     location?: string | null;
     startTime?: string | null;
     endTime?: string | null;
+    specificDate?: string | null; // YYYY-MM-DD format
+    specificDates?: string[]; // Array of YYYY-MM-DD
 }
 
 export interface CourseInput {
@@ -42,6 +44,8 @@ export interface CourseTimeInput {
     location?: string;
     startTime?: string;
     endTime?: string;
+    specificDate?: string;
+    specificDates?: string[];
 }
 
 // PDF识别结果

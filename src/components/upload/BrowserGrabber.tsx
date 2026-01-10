@@ -47,8 +47,8 @@ export function BrowserGrabber({ onUploadComplete }: BrowserGrabberProps) {
                 <div className="space-y-1">
                     <p className="font-medium">教务系统自动抓取技巧</p>
                     <p className="opacity-80">
-                        目前支持“源码抓取”：在教务系统课表页面按下 <kbd className="px-1 bg-blue-500/20 rounded">Ctrl+U</kbd>
-                        (或右键查看源代码)，全选并粘贴到下方框内，系统将自动提取课程信息。
+                        目前支持“源码抓取”：在教务系统课表页面<kbd className="px-1 bg-blue-500/20 rounded">点击右键-检查</kbd>
+                        ，移动到最上方<kbd className="px-1 bg-blue-500/20 rounded">&lt;body&gt;</kbd>标签，右键<kbd className="px-1 bg-blue-500/20 rounded">Copy - Copy outerHTML</kbd>并粘贴到下方框内，系统将自动提取课程信息。
                     </p>
                 </div>
             </div>
@@ -92,10 +92,6 @@ export function BrowserGrabber({ onUploadComplete }: BrowserGrabberProps) {
                     </>
                 )}
             </button>
-
-            <p className="text-xs text-center text-muted-foreground">
-                提示：全选 (Ctrl+A) 并粘贴页面所有内容通常比只粘贴一部分效果更好
-            </p>
         </div>
     );
 }

@@ -1,29 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PDFUploader } from '@/components/upload/PDFUploader';
+import { AISmartUploader } from '@/components/upload/AISmartUploader';
 import { CSVUploader } from '@/components/upload/CSVUploader';
 import { BrowserGrabber } from '@/components/upload/BrowserGrabber';
-import { CourseVerifier } from '@/components/upload/CourseVerifier';
-import { ArrowLeft, CheckCircle2, FileText, FileSpreadsheet, Globe, PencilLine, Download } from 'lucide-react';
+import { CourseVerifier, RecognizedCourse } from '@/components/upload/CourseVerifier';
+import { ArrowLeft, CheckCircle2, FileText, FileSpreadsheet, Globe, PencilLine, Sparkles, Plus, Calendar as CalendarIcon, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-
-interface CourseTimeSlot {
-    dayOfWeek: number;
-    startPeriod: number;
-    endPeriod: number;
-    weekRange: string;
-    teacher?: string;
-    location?: string;
-}
-
-interface RecognizedCourse {
-    name: string;
-    teacher?: string;
-    location?: string;
-    times: CourseTimeSlot[];
-}
+import { format } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import { CustomCalendar } from '@/components/ui/CustomCalendar';
 
 // Helper to group flat courses by name
 function groupCourses(flatCourses: any[]): RecognizedCourse[] {
@@ -47,22 +40,79 @@ function groupCourses(flatCourses: any[]): RecognizedCourse[] {
             endPeriod: c.endPeriod,
             weekRange: c.weekRange,
             teacher: c.teacher,
-            location: c.location
+            location: c.location,
+            specificDate: c.specificDate
         });
     });
 
     return Array.from(groupedMap.values());
 }
 
-type Step = 'select' | 'upload' | 'verify' | 'success';
+type Step = 'target' | 'config' | 'select' | 'upload' | 'verify' | 'success';
 type ImportMethod = 'pdf' | 'csv' | 'browser' | 'manual';
+type ImportTarget = 'create' | 'add' | 'overwrite';
 
 export default function ImportPage() {
     const router = useRouter();
-    const [step, setStep] = useState<Step>('select');
+    const [step, setStep] = useState<Step>('target');
     const [method, setMethod] = useState<ImportMethod | null>(null);
     const [result, setResult] = useState<any>(null);
     const [saving, setSaving] = useState(false);
+    const [aiEnabled, setAiEnabled] = useState(false);
+
+    // Schedule Config State
+    const [importTarget, setImportTarget] = useState<ImportTarget>('create');
+    const [newScheduleName, setNewScheduleName] = useState('');
+    const [periodsPerDay, setPeriodsPerDay] = useState(12);
+    const [totalWeeks, setTotalWeeks] = useState(20);
+    const [startDate, setStartDate] = useState(() => {
+        const d = new Date();
+        // Default to this week's Monday
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(d.setDate(diff));
+        return monday.toISOString().split('T')[0];
+    });
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+    // Active schedule data (for add/overwrite modes)
+    const [activeScheduleData, setActiveScheduleData] = useState<{
+        firstWeekStart: string;
+        totalWeeks: number;
+    } | null>(null);
+
+    // Fetch AI config on mount
+    useEffect(() => {
+        fetch('/api/ai/config')
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (data && data.enabled && data.hasApiKey) {
+                    setAiEnabled(true);
+                }
+            })
+            .catch(() => setAiEnabled(false));
+    }, []);
+
+    // Fetch active schedule for add/overwrite modes
+    useEffect(() => {
+        if (importTarget !== 'create') {
+            fetch('/api/schedules')
+                .then(res => res.ok ? res.json() : null)
+                .then((schedules: any[]) => {
+                    if (schedules && schedules.length > 0) {
+                        // Find active schedule or use first one
+                        const activeSchedule = schedules.find(s => s.isActive) || schedules[0];
+                        if (activeSchedule) {
+                            setActiveScheduleData({
+                                firstWeekStart: activeSchedule.firstWeekStart,
+                                totalWeeks: activeSchedule.totalWeeks || 20
+                            });
+                        }
+                    }
+                })
+                .catch(() => setActiveScheduleData(null));
+        }
+    }, [importTarget]);
 
     const handleUploadComplete = (data: any) => {
         if (data.courses && data.courses.length > 0) {
@@ -75,13 +125,7 @@ export default function ImportPage() {
         }
     };
 
-    const handleConfirmCourses = async (courses: RecognizedCourse[], options?: {
-        newScheduleName?: string;
-        mode?: 'create' | 'add' | 'overwrite';
-        periodsPerDay?: number;
-        totalWeeks?: number;
-        startDate?: string;
-    }) => {
+    const handleConfirmCourses = async (courses: RecognizedCourse[]) => {
         setSaving(true);
         try {
             const res = await fetch('/api/upload/confirm', {
@@ -89,11 +133,11 @@ export default function ImportPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     courses,
-                    newScheduleName: options?.newScheduleName,
-                    mode: options?.mode,
-                    periodsPerDay: options?.periodsPerDay,
-                    totalWeeks: options?.totalWeeks,
-                    startDate: options?.startDate
+                    newScheduleName: importTarget === 'create' ? newScheduleName : undefined,
+                    mode: importTarget,
+                    periodsPerDay: importTarget === 'create' ? periodsPerDay : undefined,
+                    totalWeeks: importTarget === 'create' ? totalWeeks : undefined,
+                    startDate: importTarget === 'create' ? startDate : undefined
                 }),
             });
 
@@ -119,9 +163,28 @@ export default function ImportPage() {
     };
 
     const handleReset = () => {
-        setStep('select');
+        setStep('target'); // Reset to beginning
         setMethod(null);
         setResult(null);
+        // Retain config for convenience? Or reset? Let's retain config but reset target if needed.
+        // Actually full reset is safer.
+        // setImportTarget('create');
+    };
+
+    const handleTargetNext = () => {
+        if (importTarget === 'create') {
+            setStep('config');
+        } else {
+            setStep('select');
+        }
+    };
+
+    const handleConfigNext = () => {
+        if (!newScheduleName.trim()) {
+            alert('请输入课表名称');
+            return;
+        }
+        setStep('select');
     };
 
     return (
@@ -131,18 +194,29 @@ export default function ImportPage() {
                 <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
                     <button
                         onClick={() => {
-                            if (step === 'select') router.back();
+                            if (step === 'target') router.back();
+                            else if (step === 'config') setStep('target');
+                            else if (step === 'select') {
+                                if (importTarget === 'create') setStep('config');
+                                else setStep('target');
+                            }
+                            else if (step === 'upload') setStep('select');
+                            else if (step === 'verify') {
+                                if (method === 'manual') setStep('select');
+                                else setStep('upload'); // Or select? Upload makes sense to retry upload.
+                            }
                             else handleReset();
                         }}
                         className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                     >
                         <ArrowLeft className="w-4 h-4" />
-                        {step === 'select' ? '返回' : '取消'}
+                        {step === 'target' ? '返回' : '上一步'}
                     </button>
                     <div className="text-sm font-medium text-muted-foreground">
-                        {step === 'select' && '选择导入方式'}
-                        {step === 'upload' && '上传数据'}
-                        {step === 'verify' && '确认信息'}
+                        {step === 'target' && '第一步：选择目标'}
+                        {step === 'config' && '第二步：课表设置'}
+                        {step === 'select' && '第三步：导入方式'}
+                        {(step === 'upload' || step === 'verify') && '第四步：识别与确认'}
                         {step === 'success' && '完成'}
                     </div>
                     <div className="w-16" /> {/* Spacer for centering */}
@@ -152,16 +226,20 @@ export default function ImportPage() {
             <div className="flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500">
                 <div className="w-full max-w-4xl space-y-12">
 
-                    {/* Header Text - Clean and Direct */}
+                    {/* Header Text */}
                     <div className="text-center space-y-4">
                         <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-                            {step === 'select' && '如何导入您的课程表？'}
+                            {step === 'target' && '您想如何导入课表？'}
+                            {step === 'config' && '新建课表设置'}
+                            {step === 'select' && '选择数据来源'}
                             {step === 'upload' && (method === 'pdf' ? '上传 PDF 文件' : method === 'csv' ? '上传 CSV 文件' : '教务系统抓取')}
                             {step === 'verify' && '确认课程详情'}
                             {step === 'success' && '导入成功'}
                         </h1>
                         <p className="text-muted-foreground text-base max-w-lg mx-auto leading-relaxed">
-                            {step === 'select' && '支持多种导入方式，请选择最适合您的一种。'}
+                            {step === 'target' && '您可以创建一张全新的课表，或者将课程添加到现有的课表中。'}
+                            {step === 'config' && '请设置新课表的基本信息，以便正确计算周次和节次。'}
+                            {step === 'select' && '我们支持多种导入方式，智能识别能帮您节省大量时间。'}
                             {step === 'upload' && '请按照指引完成操作，系统将自动处理数据。'}
                             {step === 'verify' && '请仔细核对识别出的课程信息，确保准确无误。'}
                         </p>
@@ -169,20 +247,200 @@ export default function ImportPage() {
 
                     {/* Main Content Area */}
                     <div>
+                        {step === 'target' && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+                                <button
+                                    onClick={() => setImportTarget('create')}
+                                    className={cn(
+                                        "flex flex-col items-center p-6 rounded-xl border-2 transition-all duration-200 text-center gap-4 hover:scale-[1.02]",
+                                        importTarget === 'create'
+                                            ? "border-primary bg-primary/5 shadow-md"
+                                            : "border-border bg-card hover:border-primary/50"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "p-3 rounded-full",
+                                        importTarget === 'create' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                                    )}>
+                                        <Plus className="w-6 h-6" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h3 className="font-semibold text-lg">创建新课表</h3>
+                                        <p className="text-sm text-muted-foreground">新建一张空白课表并导入课程</p>
+                                    </div>
+                                    {importTarget === 'create' && <CheckCircle2 className="w-6 h-6 text-primary mt-2" />}
+                                </button>
+
+                                <button
+                                    onClick={() => setImportTarget('add')}
+                                    className={cn(
+                                        "flex flex-col items-center p-6 rounded-xl border-2 transition-all duration-200 text-center gap-4 hover:scale-[1.02]",
+                                        importTarget === 'add'
+                                            ? "border-primary bg-primary/5 shadow-md"
+                                            : "border-border bg-card hover:border-primary/50"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "p-3 rounded-full",
+                                        importTarget === 'add' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                                    )}>
+                                        <Plus className="w-6 h-6" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h3 className="font-semibold text-lg">添加到现有</h3>
+                                        <p className="text-sm text-muted-foreground">将课程追加到当前活动课表</p>
+                                    </div>
+                                    {importTarget === 'add' && <CheckCircle2 className="w-6 h-6 text-primary mt-2" />}
+                                </button>
+
+                                <button
+                                    onClick={() => setImportTarget('overwrite')}
+                                    className={cn(
+                                        "flex flex-col items-center p-6 rounded-xl border-2 transition-all duration-200 text-center gap-4 hover:scale-[1.02]",
+                                        importTarget === 'overwrite'
+                                            ? "border-primary bg-primary/5 shadow-md"
+                                            : "border-border bg-card hover:border-primary/50"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "p-3 rounded-full",
+                                        importTarget === 'overwrite' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                                    )}>
+                                        <Sparkles className="w-6 h-6" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h3 className="font-semibold text-lg">覆盖当前</h3>
+                                        <p className="text-sm text-muted-foreground">清空当前课表并导入新课程</p>
+                                    </div>
+                                    {importTarget === 'overwrite' && <CheckCircle2 className="w-6 h-6 text-primary mt-2" />}
+                                </button>
+
+                                <div className="col-span-1 md:col-span-3 flex justify-center pt-6">
+                                    <button
+                                        onClick={handleTargetNext}
+                                        className="flex items-center gap-2 px-8 py-3 bg-primary text-primary-foreground rounded-full font-semibold shadow-lg hover:shadow-xl hover:bg-primary/90 transition-all hover:scale-105"
+                                    >
+                                        下一步
+                                        <ChevronRight className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {step === 'config' && (
+                            <div className="max-w-xl mx-auto bg-card rounded-2xl border border-border p-8 shadow-sm space-y-8 animate-in fade-in zoom-in-95 duration-200">
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-foreground">课表名称</label>
+                                        <input
+                                            type="text"
+                                            value={newScheduleName}
+                                            onChange={(e) => setNewScheduleName(e.target.value)}
+                                            placeholder="例如：2025春季学期"
+                                            className="w-full px-4 py-3 text-base border border-input rounded-xl bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                            autoFocus
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-foreground">开学日期</label>
+                                        <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                                            <PopoverTrigger asChild>
+                                                <button
+                                                    type="button"
+                                                    className={cn(
+                                                        "w-full px-4 py-3 text-base border border-input rounded-xl bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-left flex items-center justify-between transition-all",
+                                                        !startDate && "text-muted-foreground"
+                                                    )}
+                                                >
+                                                    <span className="flex items-center gap-2">
+                                                        <CalendarIcon className="w-5 h-5 text-muted-foreground" />
+                                                        {startDate ? format(new Date(startDate), 'yyyy年M月d日', { locale: zhCN }) : '选择日期'}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">第1周</span>
+                                                </button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0 border-none shadow-none bg-transparent z-[100]" align="start" side="bottom" sideOffset={8}>
+                                                <CustomCalendar
+                                                    selectedDate={startDate ? new Date(startDate) : undefined}
+                                                    onSelect={(d) => {
+                                                        setStartDate(format(d, 'yyyy-MM-dd'));
+                                                        setIsPopoverOpen(false);
+                                                    }}
+                                                    className="bg-card border border-border shadow-xl rounded-xl"
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                        <p className="text-xs text-muted-foreground px-1">设置为第一周的周一出现的日期</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-foreground">每天节数</label>
+                                            <input
+                                                type="number"
+                                                min={4}
+                                                max={20}
+                                                value={periodsPerDay || ''}
+                                                onChange={(e) => {
+                                                    const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                                                    setPeriodsPerDay(val);
+                                                }}
+                                                onBlur={() => setPeriodsPerDay(Math.min(20, Math.max(4, periodsPerDay || 12)))}
+                                                className="w-full px-4 py-3 text-base border border-input rounded-xl bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-foreground">学期周数</label>
+                                            <input
+                                                type="number"
+                                                min={10}
+                                                max={30}
+                                                value={totalWeeks || ''}
+                                                onChange={(e) => {
+                                                    const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                                                    setTotalWeeks(val);
+                                                }}
+                                                onBlur={() => setTotalWeeks(Math.min(30, Math.max(10, totalWeeks || 20)))}
+                                                className="w-full px-4 py-3 text-base border border-input rounded-xl bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleConfigNext}
+                                    className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-semibold shadow-lg hover:shadow-xl hover:bg-primary/90 transition-all hover:scale-[1.01] active:scale-[0.99]"
+                                >
+                                    下一步：选择导入方式
+                                </button>
+                            </div>
+                        )}
+
                         {step === 'select' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* PDF Import */}
+                                {/* PDF/AI Smart Import */}
                                 <button
                                     onClick={() => handleSelectMethod('pdf')}
                                     className="group relative flex items-start gap-5 p-6 rounded-xl border border-border bg-card hover:border-primary/50 hover:bg-muted/30 transition-all duration-200 text-left"
                                 >
-                                    <div className="mt-1 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-500/20">
-                                        <FileText className="w-5 h-5" />
+                                    <div className={cn(
+                                        "mt-1 p-2.5 rounded-lg border transition-colors",
+                                        aiEnabled
+                                            ? "bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-500/20"
+                                            : "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-500/20"
+                                    )}>
+                                        {aiEnabled ? <Sparkles className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                                     </div>
                                     <div className="space-y-1.5">
-                                        <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">PDF 自动识别</h3>
+                                        <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">
+                                            {aiEnabled ? 'AI 智能识别' : 'PDF 自动识别'}
+                                        </h3>
                                         <p className="text-sm text-muted-foreground leading-normal">
-                                            上传教务系统导出的 PDF 文件。<br />系统会自动提取课程时间与地点。
+                                            {aiEnabled
+                                                ? '上传 PDF 或图片文件。\nAI 智能提取课程时间与地点。'
+                                                : '上传教务系统导出的 PDF 文件。\n系统会自动提取课程时间与地点。'
+                                            }
                                         </p>
                                     </div>
                                 </button>
@@ -214,7 +472,7 @@ export default function ImportPage() {
                                     <div className="space-y-1.5">
                                         <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">HTML 源码抓取</h3>
                                         <p className="text-sm text-muted-foreground leading-normal">
-                                            粘贴教务系统网页源代码。<br />直接解析网页结构提取课表。
+                                            粘贴教务系统网页源代码（正方系统）。<br />直接解析网页结构提取课表。
                                         </p>
                                     </div>
                                 </button>
@@ -239,7 +497,10 @@ export default function ImportPage() {
 
                         {step === 'upload' && (
                             <div className="max-w-2xl mx-auto bg-card rounded-xl border border-border p-6 md:p-8 animate-in fade-in zoom-in-95 duration-200">
-                                {method === 'pdf' && <PDFUploader onUploadComplete={handleUploadComplete} />}
+                                {method === 'pdf' && (aiEnabled
+                                    ? <AISmartUploader onUploadComplete={handleUploadComplete} />
+                                    : <PDFUploader onUploadComplete={handleUploadComplete} />
+                                )}
                                 {method === 'csv' && <CSVUploader onUploadComplete={handleUploadComplete} />}
                                 {method === 'browser' && <BrowserGrabber onUploadComplete={handleUploadComplete} />}
 
@@ -268,7 +529,11 @@ export default function ImportPage() {
                                 <CourseVerifier
                                     courses={result.courses || []}
                                     onConfirm={handleConfirmCourses}
-                                    onCancel={handleReset}
+                                    onCancel={() => setStep('select')} // Or back to upload? Select seems safer.
+                                    scheduleConfig={{
+                                        totalWeeks: importTarget === 'create' ? totalWeeks : (activeScheduleData?.totalWeeks || 20),
+                                        startDate: importTarget === 'create' ? startDate : activeScheduleData?.firstWeekStart
+                                    }}
                                 />
                             </div>
                         )}

@@ -27,7 +27,7 @@ export function CourseDetailModal({ isOpen, onClose, course, onEdit, periods, cu
     if (!isOpen) return null;
 
     const selectedTime = course.times[selectedTimeIndex] || course.times[0];
-    const dayName = ['日', '一', '二', '三', '四', '五', '六'][selectedTime?.dayOfWeek || 0];
+    const dayName = ['', '一', '二', '三', '四', '五', '六', '日'][selectedTime?.dayOfWeek || 1];
 
     // Helper: Parse week range string to array of week numbers
     const parseWeekRange = (rangeStr: string): number[] => {
@@ -181,7 +181,7 @@ export function CourseDetailModal({ isOpen, onClose, course, onEdit, periods, cu
         const humanReadable = `[${course.name}]
 学分：${course.credits || '未设置'}
 ${course.times.map(t => {
-            const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+            const dayNames = ['', '一', '二', '三', '四', '五', '六', '日'];
             return `周${dayNames[t.dayOfWeek]} 第${t.startPeriod}-${t.endPeriod}节 (${t.weekRange}周)${t.teacher ? ` ${t.teacher}` : ''}${t.location ? ` @${t.location}` : ''}`;
         }).join('\n')}`;
 
@@ -267,7 +267,7 @@ ${base64Data}
                                     </div>
                                     <div className="flex-1 py-1 border-b border-border/50">
                                         <div className="text-base text-foreground">
-                                            周{['日', '一', '二', '三', '四', '五', '六'][time.dayOfWeek]} 第{time.startPeriod}-{time.endPeriod}节
+                                            周{['', '一', '二', '三', '四', '五', '六', '日'][time.dayOfWeek]} 第{time.startPeriod}-{time.endPeriod}节
                                             {periods && (
                                                 <span className="ml-2 font-medium text-muted-foreground">{getTimeRange(time.startPeriod, time.endPeriod)}</span>
                                             )}

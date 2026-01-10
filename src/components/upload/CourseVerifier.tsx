@@ -22,6 +22,7 @@ export interface CourseTimeSlot {
     weekRange: string;
     location?: string;
     teacher?: string;
+    specificDate?: string; // YYYY-MM-DD
 }
 
 export interface RecognizedCourse {
@@ -36,22 +37,53 @@ export interface RecognizedCourse {
 
 interface CourseVerifierProps {
     courses: RecognizedCourse[];
-    onConfirm: (courses: RecognizedCourse[], options?: {
-        newScheduleName?: string;
-        mode?: 'create' | 'add' | 'overwrite';
-        periodsPerDay?: number;
+    onConfirm: (courses: RecognizedCourse[]) => void;
+    onCancel: () => void;
+    scheduleConfig?: {
         totalWeeks?: number;
         startDate?: string;
-    }) => void;
-    onCancel: () => void;
+    };
 }
 
 const DAY_LABELS = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
-export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }: CourseVerifierProps) {
+import { useMemo } from 'react';
+
+// Helper function matching TimeSlotEditor's getWeekNumber logic exactly
+function getWeekNumber(startDate: string, dateStr: string): number {
+    const start = new Date(startDate);
+    const d = new Date(dateStr);
+    d.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    const diffTime = d.getTime() - start.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.floor(diffDays / 7) + 1;
+}
+
+export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel, scheduleConfig }: CourseVerifierProps) {
     const [courses, setCourses] = useState<RecognizedCourse[]>(initialCourses);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editForm, setEditForm] = useState<RecognizedCourse | null>(null);
+
+    // Dynamically compute week numbers from specificDate at render time
+    const displayCourses = useMemo(() => {
+        if (!scheduleConfig?.startDate) return courses;
+
+        return courses.map(course => ({
+            ...course,
+            times: course.times.map(time => {
+                if (time.specificDate) {
+                    // Calculate week number using same logic as TimeSlotEditor
+                    const weekNum = getWeekNumber(scheduleConfig.startDate!, time.specificDate);
+                    return {
+                        ...time,
+                        weekRange: weekNum.toString()
+                    };
+                }
+                return time;
+            })
+        }));
+    }, [courses, scheduleConfig?.startDate]);
 
     useEffect(() => {
         if (editingIndex !== null) {
@@ -69,23 +101,36 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
 
     const handleSaveEdit = (data: any) => {
         if (editingIndex !== null) {
-            const newCourses = [...courses];
-            // Merge form data back into recognized course structure
-            // We need to map CourseForm data back to RecognizedCourse
-            newCourses[editingIndex] = {
-                ...courses[editingIndex],
-                name: data.name,
-                teacher: data.teacher,
-                times: data.times.map((t: any) => ({
-                    dayOfWeek: t.dayOfWeek,
-                    startPeriod: t.startPeriod,
-                    endPeriod: t.endPeriod,
-                    weekRange: t.weekRange,
-                    location: t.location,
-                    teacher: t.teacher
-                }))
-            };
-            setCourses(newCourses);
+            const mappedTimes = data.times.map((t: any) => ({
+                dayOfWeek: t.dayOfWeek,
+                startPeriod: t.startPeriod,
+                endPeriod: t.endPeriod,
+                weekRange: t.weekRange,
+                location: t.location,
+                teacher: t.teacher,
+                specificDate: t.specificDate
+            }));
+
+            if (editingIndex === -1) {
+                // Create new course
+                const newCourse: RecognizedCourse = {
+                    name: data.name,
+                    teacher: data.teacher,
+                    times: mappedTimes,
+                    confidence: 1.0 // Manual created, full confidence
+                };
+                setCourses([...courses, newCourse]);
+            } else {
+                // Update existing course
+                const newCourses = [...courses];
+                newCourses[editingIndex] = {
+                    ...courses[editingIndex],
+                    name: data.name,
+                    teacher: data.teacher,
+                    times: mappedTimes
+                };
+                setCourses(newCourses);
+            }
             setEditingIndex(null);
         }
     };
@@ -103,48 +148,12 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
     };
 
     const handleAddNew = () => {
-        const newCourse: RecognizedCourse = {
-            name: '新课程',
-            times: [{
-                dayOfWeek: 1,
-                startPeriod: 1,
-                endPeriod: 2,
-                weekRange: '1-16',
-            }]
-        };
-        setCourses([...courses, newCourse]);
-        // Immediately open edit for the new course
-        setEditingIndex(courses.length);
+        // Instead of adding to array immediately, set special index -1
+        setEditingIndex(-1);
     };
 
-    const [importMode, setImportMode] = useState<'create' | 'add' | 'overwrite'>('create');
-    const [newScheduleName, setNewScheduleName] = useState('');
-    const [periodsPerDay, setPeriodsPerDay] = useState(12);
-    const [totalWeeks, setTotalWeeks] = useState(20);
-    const [startDate, setStartDate] = useState(() => {
-        const d = new Date();
-        // Default to this week's Monday
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        const monday = new Date(d.setDate(diff));
-        return monday.toISOString().split('T')[0];
-    });
-
-    // Manual Calendar State
-    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-
     const handleConfirm = () => {
-        if (importMode === 'create' && !newScheduleName.trim()) {
-            alert('请输入新课表名称');
-            return;
-        }
-        onConfirm(courses, {
-            newScheduleName: importMode === 'create' ? newScheduleName : undefined,
-            mode: importMode,
-            periodsPerDay: importMode === 'create' ? periodsPerDay : undefined,
-            totalWeeks: importMode === 'create' ? totalWeeks : undefined,
-            startDate: importMode === 'create' ? startDate : undefined
-        });
+        onConfirm(displayCourses);
     };
 
     return (
@@ -163,7 +172,7 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
             </div>
 
             <div className="space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
-                {courses.map((course, index) => (
+                {displayCourses.map((course, index) => (
                     <div
                         key={index}
                         className={cn(
@@ -184,7 +193,9 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
                                         <div key={tIndex} className="text-xs text-muted-foreground bg-muted/50 px-2 py-1.5 rounded-md flex items-center gap-2 border border-border/50">
                                             <span className="font-medium text-foreground">{DAY_LABELS[time.dayOfWeek]}</span>
                                             <span>{time.startPeriod}-{time.endPeriod}节</span>
-                                            <span className="text-primary/80 font-medium">{time.weekRange}</span>
+                                            <span className={cn("font-medium", time.specificDate ? "text-blue-600 dark:text-blue-400" : "text-primary/80")}>
+                                                {time.specificDate ? time.specificDate : time.weekRange}
+                                            </span>
                                             {time.location && <span className="text-muted-foreground">@{time.location}</span>}
                                         </div>
                                     ))}
@@ -212,23 +223,32 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
             </div>
 
             {/* Edit Modal Overlay */}
-            {editingIndex !== null && courses[editingIndex] && (
+            {editingIndex !== null && (
                 <Modal
                     isOpen={true}
                     onClose={handleCancelEdit}
-                    zIndex={60} // Slightly higher than default just in case, though 50 is default for Modal
+                    zIndex={60}
                 >
                     <CourseForm
-                        initialData={{
-                            name: courses[editingIndex].name,
-                            teacher: courses[editingIndex].teacher,
-                            times: courses[editingIndex].times.map(t => ({ ...t, id: crypto.randomUUID(), courseId: '' })),
+                        initialData={editingIndex === -1 ? {
+                            name: '',
+                            times: [],
+                            color: '#3B82F6',
+                            credits: 0,
+                            note: ''
+                        } : {
+                            name: displayCourses[editingIndex].name,
+                            teacher: displayCourses[editingIndex].teacher,
+                            times: displayCourses[editingIndex].times.map(t => ({ ...t, id: crypto.randomUUID(), courseId: '' })),
                             color: '#3B82F6',
                             credits: 0,
                             note: ''
                         }}
                         onSubmit={handleSaveEdit}
                         onCancel={handleCancelEdit}
+                        totalWeeks={scheduleConfig?.totalWeeks}
+                        startDate={scheduleConfig?.startDate}
+                        submitLabel={editingIndex === -1 ? '创建' : '保存'}
                     />
                 </Modal>
             )}
@@ -239,122 +259,19 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel }:
                 </div>
             )}
 
-            {/* Import Target Selection */}
-            <div className="bg-muted/30 p-4 rounded-xl space-y-3 border border-border">
-                <h4 className="text-sm font-medium text-foreground">导入目标</h4>
-                <div className="flex gap-4">
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input
-                            type="radio"
-                            name="importMode"
-                            value="create"
-                            checked={importMode === 'create'}
-                            onChange={() => setImportMode('create')}
-                            className="w-4 h-4 text-primary"
-                        />
-                        创建新课表
-                    </label>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input
-                            type="radio"
-                            name="importMode"
-                            value="add"
-                            checked={importMode === 'add'}
-                            onChange={() => setImportMode('add')}
-                            className="w-4 h-4 text-primary"
-                        />
-                        添加到当前课表
-                    </label>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input
-                            type="radio"
-                            name="importMode"
-                            value="overwrite"
-                            checked={importMode === 'overwrite'}
-                            onChange={() => setImportMode('overwrite')}
-                            className="w-4 h-4 text-primary"
-                        />
-                        覆盖当前课表
-                    </label>
-                </div>
-                {importMode === 'create' && (
-                    <div className="animate-in slide-in-from-top-2 duration-200 space-y-3 pt-2">
-                        <input
-                            type="text"
-                            value={newScheduleName}
-                            onChange={(e) => setNewScheduleName(e.target.value)}
-                            placeholder="请输入课表名称"
-                            className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:ring-1 focus:ring-primary outline-none"
-                            autoFocus
-                        />
-                        <div className="space-y-1">
-                            <label className="text-xs text-muted-foreground">开学日期</label>
-                            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-                                <PopoverTrigger asChild>
-                                    <button
-                                        type="button"
-                                        className={cn(
-                                            "w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:ring-1 focus:ring-primary outline-none text-left flex items-center gap-2",
-                                            !startDate && "text-muted-foreground"
-                                        )}
-                                    >
-                                        <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-                                        {startDate ? format(new Date(startDate), 'yyyy年M月d日', { locale: zhCN }) : '选择日期'}
-                                    </button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0 border-none shadow-none bg-transparent z-[100]" align="start" side="bottom" sideOffset={8}>
-                                    <CustomCalendar
-                                        selectedDate={startDate ? new Date(startDate) : undefined}
-                                        onSelect={(d) => {
-                                            setStartDate(format(d, 'yyyy-MM-dd'));
-                                            setIsPopoverOpen(false);
-                                        }}
-                                        className="bg-card border border-border shadow-lg rounded-xl"
-                                    />
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <label className="text-xs text-muted-foreground">每天节数</label>
-                                <input
-                                    type="number"
-                                    min={4}
-                                    max={20}
-                                    value={periodsPerDay}
-                                    onChange={(e) => setPeriodsPerDay(parseInt(e.target.value) || 12)}
-                                    className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:ring-1 focus:ring-primary outline-none"
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-xs text-muted-foreground">学期周数</label>
-                                <input
-                                    type="number"
-                                    min={10}
-                                    max={30}
-                                    value={totalWeeks}
-                                    onChange={(e) => setTotalWeeks(parseInt(e.target.value) || 20)}
-                                    className="w-full px-3 py-2 text-sm border border-input rounded-lg bg-background focus:ring-1 focus:ring-primary outline-none"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
             <div className="flex gap-3 pt-4 border-t border-border">
                 <button
                     onClick={onCancel}
                     className="flex-1 py-2.5 border border-border text-foreground font-medium rounded-xl hover:bg-muted transition-colors"
                 >
-                    取消
+                    返回
                 </button>
                 <button
                     onClick={handleConfirm}
                     disabled={courses.length === 0}
                     className="flex-1 py-2.5 bg-primary text-primary-foreground font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                    {importMode === 'create' ? '创建并导入' : (importMode === 'overwrite' ? '覆盖并导入' : '确认导入')}
+                    确认并保存
                 </button>
             </div>
         </div>
