@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { PDFUploader } from '@/components/upload/PDFUploader';
 import { AISmartUploader } from '@/components/upload/AISmartUploader';
 import { CSVUploader } from '@/components/upload/CSVUploader';
 import { BrowserGrabber } from '@/components/upload/BrowserGrabber';
 import { CourseVerifier, RecognizedCourse } from '@/components/upload/CourseVerifier';
-import { ArrowLeft, CheckCircle2, FileText, FileSpreadsheet, Globe, PencilLine, Sparkles, Plus, Calendar as CalendarIcon, ChevronRight } from 'lucide-react';
+import { AISettingsModal } from '@/components/settings/AISettingsModal';
+import { ArrowLeft, CheckCircle2, FileSpreadsheet, Globe, PencilLine, Sparkles, Plus, Calendar as CalendarIcon, ChevronRight } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -65,6 +65,7 @@ function ImportPageContent() {
     const [result, setResult] = useState<any>(null);
     const [saving, setSaving] = useState(false);
     const [aiEnabled, setAiEnabled] = useState(false);
+    const [showAISettings, setShowAISettings] = useState(false);
 
     // Schedule Config State
     const [importTarget, setImportTarget] = useState<ImportTarget>(() => {
@@ -170,6 +171,11 @@ function ImportPageContent() {
     };
 
     const handleSelectMethod = (m: ImportMethod) => {
+        // For AI/PDF method, check if AI is enabled first
+        if (m === 'pdf' && !aiEnabled) {
+            setShowAISettings(true);
+            return;
+        }
         setMethod(m);
         if (m === 'manual') {
             setResult({ courses: [] });
@@ -436,28 +442,21 @@ function ImportPageContent() {
 
                         {step === 'select' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* PDF/AI Smart Import */}
+                                {/* AI Smart Import */}
                                 <button
                                     onClick={() => handleSelectMethod('pdf')}
                                     className="group relative flex items-start gap-5 p-6 rounded-xl border border-border bg-card hover:border-primary/50 hover:bg-muted/30 transition-all duration-200 text-left"
                                 >
-                                    <div className={cn(
-                                        "mt-1 p-2.5 rounded-lg border transition-colors",
-                                        aiEnabled
-                                            ? "bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-500/20"
-                                            : "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-500/20"
-                                    )}>
-                                        {aiEnabled ? <Sparkles className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                                    <div className="mt-1 p-2.5 rounded-lg border transition-colors bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-500/20">
+                                        <Sparkles className="w-5 h-5" />
                                     </div>
                                     <div className="space-y-1.5">
                                         <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">
-                                            {aiEnabled ? 'AI 智能识别' : 'PDF 自动识别'}
+                                            AI 智能识别
+                                            {!aiEnabled && <span className="ml-2 text-xs text-muted-foreground">(需配置)</span>}
                                         </h3>
                                         <p className="text-sm text-muted-foreground leading-normal">
-                                            {aiEnabled
-                                                ? '上传 PDF 或图片文件。\nAI 智能提取课程时间与地点。'
-                                                : '上传教务系统导出的 PDF 文件。\n系统会自动提取课程时间与地点。'
-                                            }
+                                            上传 PDF 或图片文件。<br />AI 智能提取课程时间与地点。
                                         </p>
                                     </div>
                                 </button>
@@ -514,10 +513,7 @@ function ImportPageContent() {
 
                         {step === 'upload' && (
                             <div className="max-w-2xl mx-auto bg-card rounded-xl border border-border p-6 md:p-8 animate-in fade-in zoom-in-95 duration-200">
-                                {method === 'pdf' && (aiEnabled
-                                    ? <AISmartUploader onUploadComplete={handleUploadComplete} />
-                                    : <PDFUploader onUploadComplete={handleUploadComplete} />
-                                )}
+                                {method === 'pdf' && <AISmartUploader onUploadComplete={handleUploadComplete} />}
                                 {method === 'csv' && <CSVUploader onUploadComplete={handleUploadComplete} />}
                                 {method === 'browser' && <BrowserGrabber onUploadComplete={handleUploadComplete} />}
 
@@ -577,6 +573,22 @@ function ImportPageContent() {
                     </div>
                 </div>
             </div>
+            {/* AI Settings Modal */}
+            <AISettingsModal
+                isOpen={showAISettings}
+                onClose={() => setShowAISettings(false)}
+                onSaved={() => {
+                    setShowAISettings(false);
+                    // Re-check AI status
+                    fetch('/api/ai/config')
+                        .then(res => res.ok ? res.json() : null)
+                        .then(data => {
+                            if (data?.enabled && data?.hasApiKey) {
+                                setAiEnabled(true);
+                            }
+                        });
+                }}
+            />
         </div>
     );
 }
