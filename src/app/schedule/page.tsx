@@ -324,6 +324,52 @@ export default function SchedulePage() {
       });
   }, [tasks, schedule]);
 
+  // 将作业/其他任务转换为截止时间线标记
+  const deadlineMarkers = useMemo(() => {
+    if (!tasks || !schedule || globalTimeTables.length === 0) return [];
+
+    const activeTimeTable = globalTimeTables.find(t => t.id === schedule.activeTimeTableId)
+      || globalTimeTables.find(t => t.isDefault)
+      || globalTimeTables[0];
+    const timeTablePeriods = activeTimeTable?.periods || [];
+    if (timeTablePeriods.length === 0) return [];
+
+    // Get grid time boundaries
+    const firstPeriod = timeTablePeriods[0];
+    const lastPeriod = timeTablePeriods[timeTablePeriods.length - 1];
+    const [fh, fm] = firstPeriod.startTime.split(':').map(Number);
+    const [lh, lm] = lastPeriod.endTime.split(':').map(Number);
+    const gridStartMinutes = fh * 60 + fm;
+    const gridEndMinutes = lh * 60 + lm;
+    const gridTotalMinutes = gridEndMinutes - gridStartMinutes;
+
+    return tasks
+      .filter(t => t.showInSchedule && !t.completed && (t.type === 'HOMEWORK' || t.type === 'CUSTOM') && t.dueDate)
+      .map(t => {
+        const due = typeof t.dueDate === 'string' ? parseISO(t.dueDate) : t.dueDate!;
+        const week = getCurrentWeek(new Date(schedule.firstWeekStart), due);
+        let dayOfWeek = getDay(due);
+        if (dayOfWeek === 0) dayOfWeek = 7;
+
+        const dueMinutes = getHours(due) * 60 + getMinutes(due);
+
+        // Calculate position as fraction of grid height
+        // Clamp to grid boundaries
+        const clampedMinutes = Math.max(gridStartMinutes, Math.min(gridEndMinutes, dueMinutes));
+        const fraction = (clampedMinutes - gridStartMinutes) / gridTotalMinutes;
+
+        return {
+          id: t.id,
+          title: t.title,
+          dayOfWeek,
+          week,
+          fraction, // 0 to 1, position within grid
+          dueDate: due,
+          type: t.type
+        };
+      });
+  }, [tasks, schedule, globalTimeTables]);
+
   const allCourses = useMemo(() => {
     if (!schedule) return [];
     return [...schedule.courses, ...taskCourses];
@@ -643,6 +689,7 @@ export default function SchedulePage() {
               onCourseClick={handleCourseClick}
               onSwipeLeft={() => setCurrentWeek(w => Math.min(schedule.totalWeeks, w + 1))}
               onSwipeRight={() => setCurrentWeek(w => Math.max(1, w - 1))}
+              deadlines={deadlineMarkers}
             />
           </div>
         </div>

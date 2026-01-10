@@ -8,6 +8,16 @@ import { getWeekDates, isWeekInRange, isCourseFinished } from '@/lib/date-utils'
 import { Course, Period, CourseTime } from '@/types';
 import { cn } from '@/lib/utils';
 
+export interface DeadlineMarker {
+    id: string;
+    title: string;
+    dayOfWeek: number;
+    week: number;
+    fraction: number; // 0 to 1, position within grid
+    dueDate: Date;
+    type: string;
+}
+
 interface WeekViewProps {
     courses: Course[];
     periods: Period[];
@@ -25,6 +35,8 @@ interface WeekViewProps {
     // 触摸滑动事件
     onSwipeLeft?: () => void;
     onSwipeRight?: () => void;
+    // 截止时间线
+    deadlines?: DeadlineMarker[];
 }
 
 export function WeekView({
@@ -42,6 +54,7 @@ export function WeekView({
     onCourseClick,
     onSwipeLeft,
     onSwipeRight,
+    deadlines = [],
 }: WeekViewProps) {
     // 计算当前周的日期
     const weekDates = useMemo(() =>
@@ -228,6 +241,26 @@ export function WeekView({
                                         onClick={() => onCourseClick?.(course, time)}
                                     />
                                 ))}
+
+                                {/* 截止时间红线 */}
+                                {deadlines
+                                    .filter(d => d.dayOfWeek === day && d.week === currentWeek)
+                                    .map(deadline => (
+                                        <div
+                                            key={`deadline-${deadline.id}`}
+                                            className="absolute left-0 right-0 z-20 pointer-events-none"
+                                            style={{ top: `${deadline.fraction * 100}%` }}
+                                        >
+                                            <div className="relative group">
+                                                {/* 红线 */}
+                                                <div className="h-0.5 bg-red-500 w-full shadow-sm" />
+                                                {/* 标签 */}
+                                                <div className="absolute left-1 -top-4 text-[10px] text-red-500 font-medium bg-background/80 px-1 rounded truncate max-w-[90%]">
+                                                    {deadline.title}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
                             </div>
                         ))}
                     </div>

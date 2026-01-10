@@ -69,8 +69,21 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
     // 不同类型的时间字段不同
     // 作业: 只需截止时间
     // 考试/活动: 需要开始时间和结束时间
-    const [startTime, setStartTime] = useState('08:00');
-    const [endTime, setEndTime] = useState('10:00'); // 用于考试结束时间 或者 作业截止时间 (复用)
+    const [startTime, setStartTimeRaw] = useState('08:00');
+    const [endTime, setEndTime] = useState('09:00'); // 默认比开始时间晚1小时
+
+    // 自动设置结束时间为开始时间后1小时
+    const setStartTime = (time: string) => {
+        setStartTimeRaw(time);
+        // 计算1小时后的时间
+        const [h, m] = time.split(':').map(Number);
+        const newHour = h + 1;
+        if (newHour >= 24) {
+            setEndTime('23:59'); // 如果超过24点，设为23:59
+        } else {
+            setEndTime(`${String(newHour).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+        }
+    };
 
     const [loading, setLoading] = useState(false);
 
@@ -133,6 +146,12 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
             let due: Date;
 
             if (hasRange) {
+                // 验证结束时间必须晚于开始时间
+                if (endTime <= startTime) {
+                    alert('结束时间必须晚于开始时间');
+                    setLoading(false);
+                    return;
+                }
                 // 有开始和结束时间
                 start = new Date(`${date}T${startTime}`);
                 due = new Date(`${date}T${endTime}`);
