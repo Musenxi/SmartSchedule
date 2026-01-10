@@ -14,6 +14,7 @@ interface ConfirmDialogProps {
     cancelText?: string;
     onConfirm: () => void;
     variant?: 'default' | 'destructive';
+    showCancel?: boolean;
 }
 
 export function ConfirmDialog({
@@ -24,7 +25,8 @@ export function ConfirmDialog({
     confirmText = '确定',
     cancelText = '取消',
     onConfirm,
-    variant = 'default'
+    variant = 'default',
+    showCancel = true
 }: ConfirmDialogProps) {
     const handleConfirm = () => {
         onConfirm();
@@ -60,12 +62,14 @@ export function ConfirmDialog({
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <button
-                            onClick={() => onOpenChange(false)}
-                            className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors"
-                        >
-                            {cancelText}
-                        </button>
+                        {showCancel && (
+                            <button
+                                onClick={() => onOpenChange(false)}
+                                className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors"
+                            >
+                                {cancelText}
+                            </button>
+                        )}
                         <button
                             onClick={handleConfirm}
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${variant === 'destructive'
