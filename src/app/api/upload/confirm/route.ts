@@ -17,6 +17,7 @@ interface CourseInput {
     name: string;
     teacher?: string;
     location?: string;
+    credits?: number;
     times: CourseTimeSlot[];
 }
 
@@ -197,6 +198,7 @@ export async function POST(req: NextRequest) {
                     data: {
                         scheduleId: targetScheduleId!,
                         name: course.name,
+                        credits: course.credits,
                         color: getRandomColor(),
                         // teacher/location are stored in CourseTime
                         times: {

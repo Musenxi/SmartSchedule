@@ -33,6 +33,7 @@ export interface RecognizedCourse {
     times: CourseTimeSlot[];
     originalText?: string;
     confidence?: number;
+    credits?: number;
 }
 
 interface CourseVerifierProps {
@@ -111,11 +112,15 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel, s
                 specificDate: t.specificDate
             }));
 
+            // Ensure credits is a number
+            const credits = typeof data.credits === 'number' ? data.credits : parseFloat(data.credits) || 0;
+
             if (editingIndex === -1) {
                 // Create new course
                 const newCourse: RecognizedCourse = {
                     name: data.name,
                     teacher: data.teacher,
+                    credits: credits,
                     times: mappedTimes,
                     confidence: 1.0 // Manual created, full confidence
                 };
@@ -127,6 +132,7 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel, s
                     ...courses[editingIndex],
                     name: data.name,
                     teacher: data.teacher,
+                    credits: credits,
                     times: mappedTimes
                 };
                 setCourses(newCourses);
@@ -184,6 +190,9 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel, s
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold text-foreground text-lg">{course.name}</span>
                                     {course.teacher && <span className="text-sm text-muted-foreground px-2 py-0.5 bg-muted rounded-full">{course.teacher}</span>}
+                                    {course.credits !== undefined && course.credits > 0 && (
+                                        <span className="text-sm text-muted-foreground px-2 py-0.5 bg-muted rounded-full">{course.credits} 学分</span>
+                                    )}
                                     {course.confidence !== undefined && course.confidence < 0.8 && (
                                         <span className="text-xs px-1.5 py-0.5 bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded">需确认</span>
                                     )}
@@ -241,7 +250,7 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel, s
                             teacher: displayCourses[editingIndex].teacher,
                             times: displayCourses[editingIndex].times.map(t => ({ ...t, id: crypto.randomUUID(), courseId: '' })),
                             color: '#3B82F6',
-                            credits: 0,
+                            credits: displayCourses[editingIndex].credits || 0,
                             note: ''
                         }}
                         onSubmit={handleSaveEdit}

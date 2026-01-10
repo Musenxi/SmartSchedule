@@ -29,11 +29,16 @@ function groupCourses(flatCourses: any[]): RecognizedCourse[] {
                 name: name,
                 teacher: c.teacher, // Use first occurrence's teacher as default
                 location: c.location,
+                credits: c.credits, // Pass credits from first occurrence
                 times: []
             });
         }
 
         const course = groupedMap.get(name)!;
+        // If this occurrence has credits and the grouped course doesn't, use it
+        if (c.credits !== undefined && course.credits === undefined) {
+            course.credits = c.credits;
+        }
         course.times.push({
             dayOfWeek: c.dayOfWeek,
             startPeriod: c.startPeriod,

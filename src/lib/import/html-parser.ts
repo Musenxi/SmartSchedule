@@ -6,6 +6,7 @@ export interface RecognizedCourse {
     startPeriod: number;
     endPeriod: number;
     weekRange: string;
+    credits?: number;
 }
 
 /**
@@ -39,6 +40,7 @@ export function parseAcademicHTML(html: string): RecognizedCourse[] {
                 let teacher = "";
                 let location = "";
                 let weekRange = "";
+                let credits: number | undefined;
                 let startPeriod = startPeriodInitial;
                 let endPeriod = startPeriodInitial + 1; // Default duration of 2
 
@@ -49,10 +51,23 @@ export function parseAcademicHTML(html: string): RecognizedCourse[] {
                     const iconSpan = p.querySelector('span[title]');
                     const titleType = iconSpan?.getAttribute('title') || "";
 
+                    // Try to extract credits from any text line if not already found
+                    if (!credits) {
+                        const creditMatch = text.match(/(?:学分[:：]?\s*(\d+(\.\d+)?)|(\d+(\.\d+)?)\s*学分)/);
+                        if (creditMatch) {
+                            // match[1] is for "学分: 2.0", match[3] is for "2.0 学分"
+                            const val = parseFloat(creditMatch[1] || creditMatch[3]);
+                            if (!isNaN(val)) credits = val;
+                        }
+                    }
+
                     if (titleType.includes('教师')) {
                         teacher = text.replace('教师', '').trim();
                     } else if (titleType.includes('地点')) {
                         location = text.replace('上课地点', '').trim();
+                    } else if (titleType.includes('学分')) {
+                        const val = parseFloat(text);
+                        if (!isNaN(val)) credits = val;
                     } else if (titleType.includes('节/周')) {
                         // Example: "(10-12节)7周,14周" or "(10-11节)1-16周"
                         const timeText = text;
@@ -84,7 +99,8 @@ export function parseAcademicHTML(html: string): RecognizedCourse[] {
                         dayOfWeek,
                         startPeriod,
                         endPeriod,
-                        weekRange
+                        weekRange,
+                        credits
                     });
                 }
             });

@@ -7,6 +7,7 @@ export interface CSVCourse {
     endPeriod: number;
     weekRange: string; // e.g., "1-16", "1-8单", "1-8,10-16双"
     specificDate?: string; // YYYY-MM-DD format, optional
+    credits?: number;
 }
 
 export function parseCSV(text: string): CSVCourse[] {
@@ -39,7 +40,24 @@ export function parseCSV(text: string): CSVCourse[] {
                     dayOfWeek: parseInt(parts[3]) || 1,
                     startPeriod: parseInt(parts[4]) || 1,
                     endPeriod: parseInt(parts[5]) || 1,
-                    weekRange: weekRangeRaw.replace(/\//g, ',')
+                    weekRange: weekRangeRaw.replace(/\//g, ','),
+                    credits: (() => {
+                        // Check column 8 first (expected position if Date column exists/is skipped with comma)
+                        if (parts[8]) {
+                            const val = parseFloat(parts[8]);
+                            if (!isNaN(val)) return val;
+                        }
+                        // Fallback: Check column 7 (if Date column is omitted entirely and this looks like credits)
+                        // Credits are usually small numbers (e.g. 2.0, 3, 0.5) vs Date (YYYY-MM-DD or big numbers)
+                        if (parts[7]) {
+                            const val = parseFloat(parts[7]);
+                            // If it's a valid number AND not part of a date string AND logically small enough to be credits (< 20)
+                            if (!isNaN(val) && val < 20 && !parts[7].includes('/') && !parts[7].includes('-')) {
+                                return val;
+                            }
+                        }
+                        return undefined;
+                    })()
                 };
                 courses.push(regularCourse);
             }
@@ -68,7 +86,14 @@ export function parseCSV(text: string): CSVCourse[] {
                                 startPeriod: parseInt(parts[4]) || 1,
                                 endPeriod: parseInt(parts[5]) || 1,
                                 weekRange: "", // No recurring week range for specific date slot
-                                specificDate: dateStr
+                                specificDate: dateStr,
+                                credits: (() => {
+                                    if (parts[8]) {
+                                        const val = parseFloat(parts[8]);
+                                        if (!isNaN(val)) return val;
+                                    }
+                                    return undefined;
+                                })()
                             };
                             courses.push(dateCourse);
                         }
