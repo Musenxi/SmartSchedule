@@ -219,6 +219,8 @@ export function SettingsPanel({
                     onTimeTablesRefresh={async () => {
                         if (onTimeTablesRefresh) await onTimeTablesRefresh();
                     }}
+                    hasBackdrop={true}
+                    zIndex={60}
                 />
             )}
 

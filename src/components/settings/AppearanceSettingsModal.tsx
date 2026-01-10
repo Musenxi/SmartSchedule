@@ -21,7 +21,7 @@ export function AppearanceSettingsModal({
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            hasBackdrop={false}
+            hasBackdrop={true}
             zIndex={80}
             className="w-full h-full sm:h-auto sm:max-w-md bg-card sm:rounded-2xl rounded-none shadow-xl border-0 sm:border border-border overflow-hidden flex flex-col max-h-none sm:max-h-[85vh]"
         >
