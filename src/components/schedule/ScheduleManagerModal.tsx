@@ -25,6 +25,7 @@ import { Schedule, TimeTable } from '@/types';
 import { TimeTableListModal } from './TimeTableListModal';
 import { CourseListModal } from './CourseListModal';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface ScheduleManagerModalProps {
     schedule: Schedule;
@@ -276,37 +277,21 @@ export function ScheduleManagerModal({
                 }}
                 hasBackdrop={false} // Disable redundant backdrop
                 zIndex={70}
+                totalWeeks={schedule.totalWeeks}
+                startDate={schedule.firstWeekStart instanceof Date ? schedule.firstWeekStart.toISOString() : schedule.firstWeekStart}
             />
 
             {/* Delete Confirmation Dialog */}
-            <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-                <DialogContent className="sm:max-w-[425px] z-[70]" showCloseButton={false}>
-                    <div className="flex flex-col gap-4 py-4">
-                        <div className="flex flex-col gap-2">
-                            <DialogTitle className="text-lg font-semibold text-foreground">确认删除课表</DialogTitle>
-                            <DialogDescription className="text-sm text-muted-foreground">
-                                您确定要删除"{schedule.name}"吗？此操作无法撤销，删除后所有相关课程数据都将丢失。
-                            </DialogDescription>
-                        </div>
-                        <div className="flex justify-end gap-3 mt-2">
-                            <button
-                                onClick={() => setShowDeleteConfirm(false)}
-                                disabled={isDeleting}
-                                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg transition-colors"
-                            >
-                                取消
-                            </button>
-                            <button
-                                onClick={confirmDelete}
-                                disabled={isDeleting}
-                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg transition-colors"
-                            >
-                                {isDeleting ? '删除中...' : '确认删除'}
-                            </button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
+            <ConfirmDialog
+                open={showDeleteConfirm}
+                onOpenChange={setShowDeleteConfirm}
+                title="确认删除课表"
+                description={`您确定要删除"${schedule.name}"吗？此操作无法撤销，删除后所有相关课程数据都将丢失。`}
+                confirmText={isDeleting ? '删除中...' : '确认删除'}
+                cancelText="取消"
+                onConfirm={confirmDelete}
+                variant="destructive"
+            />
         </Modal >
     );
 }

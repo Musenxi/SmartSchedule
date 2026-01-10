@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useCourses } from '@/hooks/use-courses';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface CourseDetailModalProps {
     isOpen: boolean;
@@ -18,12 +19,14 @@ interface CourseDetailModalProps {
     onRefresh?: () => void;
     zIndex?: number;
     hasBackdrop?: boolean;
+    fromList?: boolean; // When true, delete button directly deletes entire course
 }
 
-export function CourseDetailModal({ isOpen, onClose, course, onEdit, periods, currentWeek = 1, selectedTimeIndex = 0, onRefresh, zIndex = 50, hasBackdrop = true }: CourseDetailModalProps) {
+export function CourseDetailModal({ isOpen, onClose, course, onEdit, periods, currentWeek = 1, selectedTimeIndex = 0, onRefresh, zIndex = 50, hasBackdrop = true, fromList = false }: CourseDetailModalProps) {
     const { deleteCourse, updateCourse } = useCourses();
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteOptions, setShowDeleteOptions] = useState(false);
+    const [showConfirmDelete, setShowConfirmDelete] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
 
     if (!isOpen) return null;
@@ -146,6 +149,18 @@ export function CourseDetailModal({ isOpen, onClose, course, onEdit, periods, cu
         } finally {
             setIsDeleting(false);
             setShowDeleteOptions(false);
+            setShowConfirmDelete(false); // Close the confirm dialog
+        }
+    };
+
+    // Trigger confirmation dialog before delete
+    const handleDeleteClick = () => {
+        if (fromList) {
+            // When from list, show confirmation first
+            setShowConfirmDelete(true);
+        } else {
+            // When from schedule, show delete options
+            setShowDeleteOptions(true);
         }
     };
 
@@ -223,7 +238,7 @@ ${base64Data}
                     {/* Top Bar */}
                     <div className="flex items-center justify-between p-4 pb-2">
                         <button
-                            onClick={() => setShowDeleteOptions(true)}
+                            onClick={handleDeleteClick}
                             disabled={isDeleting}
                             className="font-medium text-sm hover:opacity-80 transition-opacity"
                             style={{ color: 'hsl(var(--primary))' }}
@@ -406,6 +421,18 @@ ${base64Data}
                     </div>
                 </div>
             )}
+
+            {/* Confirm Delete Dialog */}
+            <ConfirmDialog
+                open={showConfirmDelete}
+                onOpenChange={setShowConfirmDelete}
+                title="删除课程"
+                description={`确定要删除整门课程《${course.name}》吗？\n\n这将删除该课程的所有时间段，此操作不可撤销。`}
+                confirmText="删除"
+                cancelText="取消"
+                onConfirm={handleDeleteCourse}
+                variant="destructive"
+            />
         </>
     );
 }

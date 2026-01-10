@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { WeekView, ScheduleToolbar } from '@/components/schedule';
 import { SettingsModal } from '@/components/settings/SettingsModal';
+import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { TaskPanel } from '@/components/tasks/TaskPanel';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { EditCourseModal } from '@/components/schedule/EditCourseModal';
@@ -40,8 +41,8 @@ export default function SchedulePage() {
   const [error, setError] = useState('');
   const [currentWeek, setCurrentWeek] = useState(1);
 
-  // 移动端视图状态 ('schedule' | 'tasks')
-  const [mobileView, setMobileView] = useState<'schedule' | 'tasks'>('schedule');
+  // 移动端视图状态 ('schedule' | 'tasks' | 'settings')
+  const [mobileView, setMobileView] = useState<'schedule' | 'tasks' | 'settings'>('schedule');
 
   // 侧边栏宽度状态
   const [panelWidth, setPanelWidth] = useState(360);
@@ -688,6 +689,22 @@ export default function SchedulePage() {
             <TaskPanel />
           </div>
         </div>
+
+        {/* 设置面板 (移动端专用视图) */}
+        <div
+          className={cn(
+            "flex-1 flex flex-col min-w-0 bg-background overflow-hidden",
+            mobileView === 'settings' ? 'flex' : 'hidden md:hidden' // 仅在移动端且选中 settings 时显示
+          )}
+        >
+          <SettingsPanel
+            currentSchedule={schedule || undefined}
+            timeTables={globalTimeTables}
+            onScheduleUpdate={handleUpdateSchedule}
+            onTimeTablesRefresh={fetchTimeTables}
+            onManageSchedule={() => setIsScheduleListOpen(true)}
+          />
+        </div>
       </div>
 
       {/* 底部导航栏 (仅移动端显示) - 固定到底部 */}
@@ -715,8 +732,11 @@ export default function SchedulePage() {
         </button>
 
         <button
-          onClick={openSettingsModal}
-          className="flex flex-col items-center justify-center flex-1 h-full gap-1 hover:bg-muted/50 text-muted-foreground transition-colors"
+          onClick={() => setMobileView('settings')}
+          className={cn(
+            "flex flex-col items-center justify-center flex-1 h-full gap-1 hover:bg-muted/50 transition-colors",
+            mobileView === 'settings' ? "text-primary" : "text-muted-foreground"
+          )}
         >
           <Settings className="w-5 h-5" />
           <span className="text-[10px] font-medium">设置</span>

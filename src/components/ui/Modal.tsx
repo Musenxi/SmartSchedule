@@ -1,9 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
+
+// Global counter to track open modals
+let openModalCount = 0;
+let savedScrollY = 0;
 
 interface ModalProps {
     isOpen: boolean;
@@ -25,6 +29,7 @@ export function Modal({
     disableAnimation = false
 }: ModalProps) {
     const [mounted, setMounted] = useState(false);
+    const backdropRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setMounted(true);
@@ -33,24 +38,57 @@ export function Modal({
 
     useEffect(() => {
         if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            // Only unlock if we are top-level or if explicit
-            // Simple approach: unlock when closed. 
-            // If multiple modals are stacked, the underlying one might need to keep it locked.
-            // But since we use Portals, they are independent. 
-            // If we close the top one, the bottom one is still open? 
-            // Actually, if we close top one, we just remove it.
-            // We should check if any OTHER modals are open? Too complex for now.
-            // Let's stick to simple unlock. If underlying modal is open, it should re-lock?
-            // No, React useEffect cleanups might run in order.
-            // Better: Don't unlock if another modal is present?
-            // For now, let's just unlock. If issues arise with background scrolling, we'll refine.
-            document.body.style.overflow = '';
+            openModalCount++;
+            // Only lock scroll on first modal
+            if (openModalCount === 1) {
+                savedScrollY = window.scrollY;
+                document.body.style.position = 'fixed';
+                document.body.style.top = `-${savedScrollY}px`;
+                document.body.style.left = '0';
+                document.body.style.right = '0';
+                document.body.style.overflow = 'hidden';
+                document.body.style.touchAction = 'none';
+            }
         }
+
         return () => {
-            // Clean up
-            document.body.style.overflow = '';
+            if (isOpen) {
+                openModalCount--;
+                // Only unlock scroll when all modals are closed
+                if (openModalCount === 0) {
+                    document.body.style.position = '';
+                    document.body.style.top = '';
+                    document.body.style.left = '';
+                    document.body.style.right = '';
+                    document.body.style.overflow = '';
+                    document.body.style.touchAction = '';
+                    window.scrollTo(0, savedScrollY);
+                }
+            }
+        };
+    }, [isOpen]);
+
+    // Prevent scroll on backdrop only
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const backdrop = backdropRef.current;
+        if (!backdrop) return;
+
+        const preventScroll = (e: Event) => {
+            // Only prevent if the event target is the backdrop itself, not children
+            if (e.target === backdrop) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        };
+
+        backdrop.addEventListener('wheel', preventScroll, { passive: false });
+        backdrop.addEventListener('touchmove', preventScroll, { passive: false });
+
+        return () => {
+            backdrop.removeEventListener('wheel', preventScroll);
+            backdrop.removeEventListener('touchmove', preventScroll);
         };
     }, [isOpen]);
 
@@ -58,26 +96,24 @@ export function Modal({
 
     return createPortal(
         <div
+            ref={backdropRef}
             className={cn(
                 "fixed inset-0 flex items-center justify-center p-4",
                 !disableAnimation && "animate-in fade-in duration-200",
-                hasBackdrop ? "bg-black/40 backdrop-blur-md" : "bg-transparent", // Unified frosted glass style
-                // If nested, we might want transparent backing, but Portal moves it to root.
-                // So transparent backing makes sense if we want to see the modal below.
-                // If hasBackdrop is false, we just show content.
-                // NOTE: If hasBackdrop is false, we still need a wrapper to center content?
-                // Yes, standard modal behavior.
+                hasBackdrop ? "bg-black/40 backdrop-blur-md" : "bg-transparent",
             )}
-            style={{ zIndex }}
+            style={{ zIndex, touchAction: 'none' }}
             onClick={onClose}
         >
             <div
+                data-modal-content
                 className={cn(
                     "w-full max-w-md bg-card rounded-2xl shadow-xl border border-border overflow-hidden flex flex-col max-h-[85vh]",
                     !disableAnimation && "animate-in zoom-in-95 duration-200",
                     className
                 )}
                 onClick={e => e.stopPropagation()}
+                onWheel={e => e.stopPropagation()}
             >
                 {children}
             </div>

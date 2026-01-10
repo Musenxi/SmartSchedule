@@ -24,11 +24,12 @@ interface TimeSlotEditorProps {
     totalWeeks?: number;
     hasBackdrop?: boolean;
     startDate?: string;
+    zIndex?: number;
 }
 
 const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
-export function TimeSlotEditor({ isOpen, onClose, value, onChange, totalWeeks = 20, startDate, hasBackdrop = true }: TimeSlotEditorProps) {
+export function TimeSlotEditor({ isOpen, onClose, value, onChange, totalWeeks = 20, startDate, hasBackdrop = true, zIndex = 60 }: TimeSlotEditorProps) {
     const [localValue, setLocalValue] = useState<CourseTimeInput>(value);
 
     // Generate weeks grid based on totalWeeks
@@ -165,7 +166,7 @@ export function TimeSlotEditor({ isOpen, onClose, value, onChange, totalWeeks = 
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            zIndex={60}
+            zIndex={zIndex}
             hasBackdrop={hasBackdrop}
         >
             <div className="flex items-center justify-between p-4 border-b border-border bg-white dark:bg-card rounded-t-2xl shadow-sm shrink-0">

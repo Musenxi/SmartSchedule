@@ -5,6 +5,7 @@ import { X, User, MapPin, BookOpen } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Course, Period } from '@/types';
 import { CourseDetailModal } from './CourseDetailModal';
+import { EditCourseModal } from './EditCourseModal';
 
 interface CourseListModalProps {
     isOpen: boolean;
@@ -15,6 +16,8 @@ interface CourseListModalProps {
     onRefresh?: () => void;
     zIndex?: number;
     hasBackdrop?: boolean;
+    totalWeeks?: number;
+    startDate?: string;
 }
 
 export function CourseListModal({
@@ -26,8 +29,11 @@ export function CourseListModal({
     onRefresh,
     zIndex = 70,
     hasBackdrop = true,
+    totalWeeks,
+    startDate,
 }: CourseListModalProps) {
     const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+    const [isEditOpen, setIsEditOpen] = useState(false);
 
     // If main modal is closed, ensure detail modal is also effectively closed/reset
     if (!isOpen) return null;
@@ -39,7 +45,7 @@ export function CourseListModal({
                 onClose={onClose}
                 zIndex={zIndex}
                 hasBackdrop={hasBackdrop}
-                className="w-full max-w-lg bg-card p-0 flex flex-col h-[60vh]"
+                className="w-full max-w-md bg-card rounded-2xl shadow-xl border border-border overflow-hidden flex flex-col max-h-[85vh]"
             >
                 <div className="px-6 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
                     <div className="flex flex-col">
@@ -107,16 +113,34 @@ export function CourseListModal({
             {/* Course Detail Modal */}
             {selectedCourse && (
                 <CourseDetailModal
-                    isOpen={!!selectedCourse}
+                    isOpen={!!selectedCourse && !isEditOpen}
                     onClose={() => setSelectedCourse(null)}
                     course={selectedCourse}
                     periods={periods}
                     onEdit={() => {
-                        // Placeholder for edit functionality
-                        alert('如需编辑课程，请在主界面点击相应课程卡片。');
+                        setIsEditOpen(true);
                     }}
                     onRefresh={onRefresh}
                     zIndex={80}
+                    hasBackdrop={false}
+                    fromList={true}
+                />
+            )}
+
+            {/* Edit Course Modal */}
+            {selectedCourse && (
+                <EditCourseModal
+                    isOpen={isEditOpen}
+                    onClose={() => setIsEditOpen(false)}
+                    course={selectedCourse}
+                    totalWeeks={totalWeeks}
+                    startDate={startDate}
+                    onSave={() => {
+                        onRefresh?.();
+                        setIsEditOpen(false);
+                        setSelectedCourse(null);
+                    }}
+                    zIndex={90}
                     hasBackdrop={false}
                 />
             )}

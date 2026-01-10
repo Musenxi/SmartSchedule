@@ -5,6 +5,7 @@ import { CourseTime } from '@/types';
 import { Plus, Trash2, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TimeSlotEditor } from './TimeSlotEditor';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 const COLORS = [
     '#3B82F6', // Blue
@@ -32,8 +33,10 @@ interface CourseFormProps {
     onCancel: () => void;
     loading?: boolean;
     submitLabel?: string;
+    today?: Date;
     totalWeeks?: number;
     startDate?: string;
+    zIndex?: number;
 }
 
 export function CourseForm({
@@ -43,7 +46,8 @@ export function CourseForm({
     loading = false,
     submitLabel = '保存',
     totalWeeks = 20,
-    startDate
+    startDate,
+    zIndex = 50
 }: CourseFormProps) {
     // Form state
     const [name, setName] = useState('');
@@ -57,13 +61,25 @@ export function CourseForm({
     const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
     const [isCreatingSlot, setIsCreatingSlot] = useState(false);
 
+    // Delete confirmation state
+    const [slotToDelete, setSlotToDelete] = useState<number | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
     useEffect(() => {
         if (initialData) {
             setName(initialData.name || '');
             setColor(initialData.color || COLORS[0]);
             setCredits(initialData.credits?.toString() || '0');
             setNote(initialData.note || '');
-            setTeacher(initialData.teacher || '');
+
+            // Get unique teachers from all time slots
+            const uniqueTeachers = Array.from(new Set(
+                (initialData.times || [])
+                    .map(t => t.teacher)
+                    .filter((t): t is string => !!t && t.trim() !== '')
+            ));
+            setTeacher(uniqueTeachers.length > 0 ? uniqueTeachers.join(',') : (initialData.teacher || ''));
+
             // Deep copy times to avoid reference issues
             setTimes(initialData.times ? JSON.parse(JSON.stringify(initialData.times)) : []);
         }
@@ -85,11 +101,19 @@ export function CourseForm({
         setIsCreatingSlot(true);
     };
 
+    const confirmDeleteSlot = () => {
+        if (slotToDelete !== null) {
+            const newTimes = [...times];
+            newTimes.splice(slotToDelete, 1);
+            setTimes(newTimes);
+            setSlotToDelete(null);
+        }
+    };
+
     const removeTimeSlot = (index: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        const newTimes = [...times];
-        newTimes.splice(index, 1);
-        setTimes(newTimes);
+        setSlotToDelete(index);
+        setShowDeleteConfirm(true);
     };
 
     const duplicateTimeSlot = (index: number, e: React.MouseEvent) => {
@@ -299,6 +323,7 @@ export function CourseForm({
                     totalWeeks={totalWeeks}
                     startDate={startDate}
                     hasBackdrop={false}
+                    zIndex={zIndex + 10}
                 />
             )}
 
@@ -319,8 +344,21 @@ export function CourseForm({
                     totalWeeks={totalWeeks}
                     startDate={startDate}
                     hasBackdrop={false}
+                    zIndex={zIndex + 10}
                 />
             )}
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                open={showDeleteConfirm}
+                onOpenChange={setShowDeleteConfirm}
+                title="删除时间段"
+                description="确定要删除这个上课时间段吗？此操作将移除该时间段的设置。"
+                confirmText="删除"
+                cancelText="取消"
+                onConfirm={confirmDeleteSlot}
+                variant="destructive"
+            />
         </>
     );
 }
