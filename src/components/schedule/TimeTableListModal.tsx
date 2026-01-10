@@ -8,6 +8,7 @@ import { TimeTableEditorModal } from './TimeTableEditorModal';
 import { TimeTableSwitchConfigModal } from './TimeTableSwitchConfigModal';
 
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface TimeTableListModalProps {
     schedule: Schedule;
@@ -49,6 +50,7 @@ export function TimeTableListModal({
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [optimisticActiveId, setOptimisticActiveId] = useState<string | null>(null);
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [toggling, setToggling] = useState(false);
@@ -92,13 +94,17 @@ export function TimeTableListModal({
         setIsEditorOpen(true);
     };
 
-    const handleDelete = async (e: React.MouseEvent, id: string) => {
+    const handleDelete = (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
-        if (!confirm('确定要删除这个时间表吗？')) return;
-
         setDeletingId(id);
+        setShowDeleteConfirm(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deletingId) return;
+
         try {
-            const res = await fetch(`/api/timetables/${id}`, {
+            const res = await fetch(`/api/timetables/${deletingId}`, {
                 method: 'DELETE'
             });
 
@@ -113,6 +119,7 @@ export function TimeTableListModal({
             alert(error.message || '删除失败');
         } finally {
             setDeletingId(null);
+            setShowDeleteConfirm(false);
         }
     };
 
@@ -252,7 +259,6 @@ export function TimeTableListModal({
                                 {!timeTable.isDefault && !isActive && (
                                     <button
                                         onClick={(e) => handleDelete(e, timeTable.id)}
-                                        disabled={deletingId === timeTable.id}
                                         className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                                         title="删除"
                                     >
@@ -319,6 +325,21 @@ export function TimeTableListModal({
                     setIsConfigOpen(false);
                 }}
                 timeTables={timeTables}
+            />
+
+
+            <ConfirmDialog
+                open={showDeleteConfirm}
+                onOpenChange={(open) => {
+                    setShowDeleteConfirm(open);
+                    if (!open) setDeletingId(null);
+                }}
+                title="删除上课时间表"
+                description="确定要删除这个时间表吗？删除后，使用此时间表的历史数据可能受影响。"
+                confirmText="删除"
+                cancelText="取消"
+                onConfirm={confirmDelete}
+                variant="destructive"
             />
         </Modal>
     );

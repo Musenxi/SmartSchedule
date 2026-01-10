@@ -6,6 +6,7 @@ import { TimeTable, Period } from '@/types';
 import { cn } from '@/lib/utils';
 
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface TimeTableEditorModalProps {
     timeTable: TimeTable;
@@ -29,6 +30,8 @@ export function TimeTableEditorModal({
     const [sameDuration, setSameDuration] = useState(timeTable.sameDuration);
     const [duration, setDuration] = useState<number | ''>(timeTable.duration || 45);
     const [saving, setSaving] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     useEffect(() => {
         if (isOpen && timeTable) {
@@ -158,6 +161,30 @@ export function TimeTableEditorModal({
         }
     };
 
+    const confirmDeleteTimeTable = async () => {
+        if (timeTable.id === 'new') return;
+        setIsDeleting(true);
+        try {
+            const res = await fetch(`/api/timetables/${timeTable.id}`, {
+                method: 'DELETE'
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Delete failed');
+            }
+
+            await onSave(); // Refresh list
+            onClose();
+        } catch (error: any) {
+            console.error('Delete failed', error);
+            alert(error.message || '删除失败');
+        } finally {
+            setIsDeleting(false);
+            setShowDeleteConfirm(false);
+        }
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -282,21 +309,45 @@ export function TimeTableEditorModal({
                 </div>
             </div>
 
-            <div className="p-4 border-t border-border flex justify-end gap-3 flex-shrink-0 bg-card">
-                <button
-                    onClick={onClose}
-                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg transition-colors"
-                >
-                    取消
-                </button>
-                <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="px-6 py-2 text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 rounded-lg transition-opacity"
-                >
-                    {saving ? '保存中...' : '保存'}
-                </button>
+            <div className="p-4 border-t border-border flex items-center justify-between flex-shrink-0 bg-card">
+                <div>
+                    {timeTable.id !== 'new' && !timeTable.isDefault && (
+                        <button
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            删除
+                        </button>
+                    )}
+                </div>
+                <div className="flex gap-3">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                    >
+                        取消
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="px-6 py-2 text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 rounded-lg transition-opacity"
+                    >
+                        {saving ? '保存中...' : '保存'}
+                    </button>
+                </div>
             </div>
+
+            <ConfirmDialog
+                open={showDeleteConfirm}
+                onOpenChange={setShowDeleteConfirm}
+                title="删除上课时间表"
+                description="确定要删除这个时间表吗？删除后，使用此时间表的历史数据可能受影响。"
+                confirmText={isDeleting ? "删除中..." : "确认删除"}
+                cancelText="取消"
+                onConfirm={confirmDeleteTimeTable}
+                variant="destructive"
+            />
         </Modal>
     );
 }

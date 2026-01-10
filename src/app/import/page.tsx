@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { PDFUploader } from '@/components/upload/PDFUploader';
 import { AISmartUploader } from '@/components/upload/AISmartUploader';
 import { CSVUploader } from '@/components/upload/CSVUploader';
 import { BrowserGrabber } from '@/components/upload/BrowserGrabber';
 import { CourseVerifier, RecognizedCourse } from '@/components/upload/CourseVerifier';
 import { ArrowLeft, CheckCircle2, FileText, FileSpreadsheet, Globe, PencilLine, Sparkles, Plus, Calendar as CalendarIcon, ChevronRight } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -52,8 +52,9 @@ type Step = 'target' | 'config' | 'select' | 'upload' | 'verify' | 'success';
 type ImportMethod = 'pdf' | 'csv' | 'browser' | 'manual';
 type ImportTarget = 'create' | 'add' | 'overwrite';
 
-export default function ImportPage() {
+function ImportPageContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [step, setStep] = useState<Step>('target');
     const [method, setMethod] = useState<ImportMethod | null>(null);
     const [result, setResult] = useState<any>(null);
@@ -61,7 +62,10 @@ export default function ImportPage() {
     const [aiEnabled, setAiEnabled] = useState(false);
 
     // Schedule Config State
-    const [importTarget, setImportTarget] = useState<ImportTarget>('create');
+    const [importTarget, setImportTarget] = useState<ImportTarget>(() => {
+        const target = searchParams.get('target');
+        return (target === 'add' || target === 'overwrite') ? target : 'create';
+    });
     const [newScheduleName, setNewScheduleName] = useState('');
     const [periodsPerDay, setPeriodsPerDay] = useState(12);
     const [totalWeeks, setTotalWeeks] = useState(20);
@@ -100,19 +104,27 @@ export default function ImportPage() {
                 .then(res => res.ok ? res.json() : null)
                 .then((schedules: any[]) => {
                     if (schedules && schedules.length > 0) {
-                        // Find active schedule or use first one
-                        const activeSchedule = schedules.find(s => s.isActive) || schedules[0];
-                        if (activeSchedule) {
+                        // Find target schedule: active one, or specific one if passed in params
+                        const scheduleId = searchParams.get('scheduleId');
+                        let targetSchedule = schedules.find(s => s.isActive) || schedules[0];
+
+                        // If specific schedule ID is passed, try to find it
+                        if (scheduleId) {
+                            const specific = schedules.find(s => s.id === scheduleId);
+                            if (specific) targetSchedule = specific;
+                        }
+
+                        if (targetSchedule) {
                             setActiveScheduleData({
-                                firstWeekStart: activeSchedule.firstWeekStart,
-                                totalWeeks: activeSchedule.totalWeeks || 20
+                                firstWeekStart: targetSchedule.firstWeekStart,
+                                totalWeeks: targetSchedule.totalWeeks || 20
                             });
                         }
                     }
                 })
                 .catch(() => setActiveScheduleData(null));
         }
-    }, [importTarget]);
+    }, [importTarget, searchParams]);
 
     const handleUploadComplete = (data: any) => {
         if (data.courses && data.courses.length > 0) {
@@ -561,5 +573,13 @@ export default function ImportPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ImportPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+            <ImportPageContent />
+        </Suspense>
     );
 }
