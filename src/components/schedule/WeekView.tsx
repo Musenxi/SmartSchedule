@@ -31,7 +31,7 @@ interface WeekViewProps {
     showNonCurrentWeek: boolean;
     periodHeight: number;
     courseCornerRadius: number;
-    onCourseClick?: (course: Course, time: CourseTime) => void;
+    onCourseClick?: (course: Course, time: CourseTime, overlapping?: Array<{ course: Course; time: CourseTime }>) => void;
     // 触摸滑动事件
     onSwipeLeft?: () => void;
     onSwipeRight?: () => void;
@@ -72,7 +72,7 @@ export function WeekView({
 
     // 按星期分组的课程
     const coursesByDay = useMemo(() => {
-        const result: Record<number, Array<{ course: Course; time: Course['times'][0] }>> = {};
+        const result: Record<number, Array<{ course: Course; time: CourseTime; overlapping: Array<{ course: Course; time: CourseTime }> }>> = {};
 
         for (const day of visibleDays) {
             result[day] = [];
@@ -95,7 +95,7 @@ export function WeekView({
                     if (isCourseFinished(currentWeek, time.weekRange)) continue;
                 }
 
-                result[time.dayOfWeek].push({ course, time });
+                result[time.dayOfWeek].push({ course, time, overlapping: [] });
             }
         }
 
@@ -104,11 +104,6 @@ export function WeekView({
             for (const day of visibleDays) {
                 const dayCourses = result[day];
                 const newDayCourses: typeof dayCourses = [];
-
-                // Group by time slots to find overlaps
-                // Simple version: check for exact period match or overlap
-                // Since grid logic is complex, we'll do a simpler distinct check:
-                // If a non-current-week course occupies the SAME period as a current-week course, hide it.
 
                 for (const item of dayCourses) {
                     const isCurrent = isWeekInRange(currentWeek, item.time.weekRange);
@@ -131,6 +126,19 @@ export function WeekView({
                     newDayCourses.push(item);
                 }
                 result[day] = newDayCourses;
+            }
+        }
+
+        // Calculate overlaps for badges
+        for (const day of visibleDays) {
+            const dayCourses = result[day];
+            for (const item of dayCourses) {
+                // Find all OTHER courses that overlap with this one
+                const overlaps = dayCourses.filter(other => {
+                    if (other === item) return false;
+                    return Math.max(item.time.startPeriod, other.time.startPeriod) <= Math.min(item.time.endPeriod, other.time.endPeriod);
+                });
+                item.overlapping = overlaps;
             }
         }
 
@@ -230,7 +238,7 @@ export function WeekView({
                                 ))}
 
                                 {/* 课程卡片 */}
-                                {coursesByDay[day]?.map(({ course, time }) => (
+                                {coursesByDay[day]?.map(({ course, time, overlapping }) => (
                                     <CourseCard
                                         key={`${course.id}-${time.id}`}
                                         course={course}
@@ -238,7 +246,8 @@ export function WeekView({
                                         periodHeight={periodHeight}
                                         currentWeek={currentWeek}
                                         cornerRadius={courseCornerRadius}
-                                        onClick={() => onCourseClick?.(course, time)}
+                                        onClick={() => onCourseClick?.(course, time, overlapping)}
+                                        overlapCount={overlapping.length > 0 ? overlapping.length + 1 : 0}
                                     />
                                 ))}
 

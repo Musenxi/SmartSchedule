@@ -12,6 +12,7 @@ interface CourseCardProps {
     currentWeek: number;
     cornerRadius: number;
     onClick?: () => void;
+    overlapCount?: number;
 }
 
 export function CourseCard({
@@ -20,7 +21,8 @@ export function CourseCard({
     periodHeight,
     currentWeek,
     cornerRadius,
-    onClick
+    onClick,
+    overlapCount
 }: CourseCardProps) {
     const isCurrentWeek = isWeekInRange(currentWeek, time.weekRange);
 
@@ -50,6 +52,13 @@ export function CourseCard({
             style={style}
             onClick={onClick}
         >
+            {/* Overlap Badge */}
+            {(overlapCount || 0) > 1 && (
+                <div className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-sm z-10">
+                    {overlapCount}
+                </div>
+            )}
+
             <div className="flex flex-col items-center justify-center w-full h-full px-[1px] md:px-1">
                 {/* 考试标签 */}
                 {time.teacher === '考试' && (

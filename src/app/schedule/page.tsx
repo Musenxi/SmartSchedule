@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { getDay, getHours, getMinutes, parseISO, addWeeks, format } from 'date-fns';
 import { ScheduleManagerModal } from '@/components/schedule/ScheduleManagerModal';
 import { ScheduleListModal } from '@/components/schedule/ScheduleListModal';
+import { CourseConflictModal } from '@/components/schedule/CourseConflictModal';
 
 interface ScheduleData extends Schedule {
   courses: Course[];
@@ -87,6 +88,10 @@ export default function SchedulePage() {
   const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
   const [isTransitioningFromDetail, setIsTransitioningFromDetail] = useState(false);
 
+  // 冲突课程处理
+  const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
+  const [conflictItems, setConflictItems] = useState<{ course: Course; time: CourseTime }[]>([]);
+
   // Derive selectedCourse from schedule.courses for fresh data
   const selectedCourse = useMemo(() => {
     if (!selectedCourseId || !schedule?.courses) return null;
@@ -107,7 +112,18 @@ export default function SchedulePage() {
       .catch(console.error);
   }, []);
 
-  const handleCourseClick = (course: Course, time?: CourseTime) => {
+  const handleCourseClick = (course: Course, time?: CourseTime, overlapping?: { course: Course; time: CourseTime }[]) => {
+    if (overlapping && overlapping.length > 0) {
+      // 如果有重叠课程，显示冲突列表
+      // 将当前点击的课程也加入列表（如果是计算时排除了自身）
+      // 这里 WeekView 计算 overlaps 时排除了自身，所以要加回去
+      // 并且可能需要排序？
+      const allItems = [{ course, time: time! }, ...overlapping];
+      setConflictItems(allItems);
+      setIsConflictModalOpen(true);
+      return;
+    }
+
     if (course.id.startsWith('task-')) {
       // 是任务（考试/活动）：打开任务编辑
       const taskId = course.id.replace('task-', '');
@@ -882,6 +898,13 @@ export default function SchedulePage() {
           onTimeTablesRefresh={fetchTimeTables}
         />
       )}
+
+      <CourseConflictModal
+        isOpen={isConflictModalOpen}
+        onClose={() => setIsConflictModalOpen(false)}
+        items={conflictItems}
+        onSelect={(course, time) => handleCourseClick(course, time)}
+      />
     </div>
   );
 }

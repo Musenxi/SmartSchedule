@@ -55,26 +55,42 @@ export function TimeSlotEditor({ isOpen, onClose, value, onChange, totalWeeks = 
         }
     }, [isOpen, value]);
 
+    // Scroll helper: centers selected item in 128px viewport
+    // Container: h-32 (128px), Item: h-8 (32px), Padding: py-12 (48px each)
+    // Item center position = 48 (top padding) + (p-1)*32 + 16 (half item)
+    // To center in 128px viewport, scrollTop = itemCenter - viewportCenter
+    const scrollToCenter = (ref: React.RefObject<HTMLDivElement | null>, period: number) => {
+        if (!ref.current) return;
+        const itemHeight = 32;
+        const paddingTop = 48;
+        const viewportHeight = 128;
+        // Item center in scroll content
+        const itemCenter = paddingTop + (period - 1) * itemHeight + itemHeight / 2;
+        // Scroll position to center item in viewport
+        const scrollTop = itemCenter - viewportHeight / 2;
+        ref.current.scrollTop = Math.max(0, scrollTop);
+    };
+
+    // Scroll start period when it changes
     useEffect(() => {
         if (isOpen) {
-            // Wait for render/animation
+            // Longer delay to wait for modal animation
             const timer = setTimeout(() => {
-                // Scroll start period (item height 32, padding 48 for center)
-                if (startPeriodRef.current) {
-                    const p = localValue.startPeriod;
-                    const scrollTop = 32 * (p - 1);
-                    startPeriodRef.current.scrollTo({ top: scrollTop, behavior: 'instant' });
-                }
-                // Scroll end period
-                if (endPeriodRef.current) {
-                    const p = localValue.endPeriod;
-                    const scrollTop = 32 * (p - 1);
-                    endPeriodRef.current.scrollTo({ top: scrollTop, behavior: 'instant' });
-                }
-            }, 50);
+                scrollToCenter(startPeriodRef, localValue.startPeriod);
+            }, 150);
             return () => clearTimeout(timer);
         }
-    }, [isOpen]); // Only run on open for initial positioning
+    }, [isOpen, localValue.startPeriod]);
+
+    // Scroll end period when it changes
+    useEffect(() => {
+        if (isOpen) {
+            const timer = setTimeout(() => {
+                scrollToCenter(endPeriodRef, localValue.endPeriod);
+            }, 150);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen, localValue.endPeriod]);
 
     const handleSave = () => {
         // Convert activeWeeks back to string
