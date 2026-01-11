@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
                 email: true,
                 name: true,
                 avatar: true,
+                role: true,
             }
         });
 
@@ -120,6 +121,7 @@ export async function PUT(request: NextRequest) {
                 email: true,
                 name: true,
                 avatar: true,
+                role: true,
             }
         });
 

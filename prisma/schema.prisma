@@ -182,3 +182,11 @@ model Settings {
 
   @@map("settings")
 }
+
+// 系统设置表（键值对存储）
+model SystemSetting {
+  key   String @id
+  value String
+
+  @@map("system_settings")
+}
