@@ -4,9 +4,10 @@ import { cn } from '@/lib/utils';
 
 interface SharePasteUploaderProps {
     onUploadComplete: (data: any) => void;
+    onBack?: () => void;
 }
 
-export function SharePasteUploader({ onUploadComplete }: SharePasteUploaderProps) {
+export function SharePasteUploader({ onUploadComplete, onBack }: SharePasteUploaderProps) {
     const [text, setText] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -131,6 +132,14 @@ export function SharePasteUploader({ onUploadComplete }: SharePasteUploaderProps
                         </>
                     )}
                 </button>
+                {onBack && (
+                    <button
+                        onClick={onBack}
+                        className="w-full text-muted-foreground hover:text-foreground py-2 text-sm transition-colors"
+                    >
+                        返回上一步
+                    </button>
+                )}
             </div>
         </div>
     );

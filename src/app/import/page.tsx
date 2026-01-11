@@ -243,7 +243,10 @@ function ImportPageContent() {
                                 if (importTarget === 'create') setStep('config');
                                 else setStep('target');
                             }
-                            else if (step === 'upload') setStep('select');
+                            else if (step === 'upload') {
+                                if (method === 'share') setStep('target');
+                                else setStep('select');
+                            }
                             else if (step === 'verify') {
                                 if (method === 'manual') setStep('select');
                                 else setStep('upload'); // Or select? Upload makes sense to retry upload.
@@ -552,7 +555,7 @@ function ImportPageContent() {
                                 {method === 'pdf' && <AISmartUploader onUploadComplete={handleUploadComplete} />}
                                 {method === 'csv' && <CSVUploader onUploadComplete={handleUploadComplete} />}
                                 {method === 'browser' && <BrowserGrabber onUploadComplete={handleUploadComplete} />}
-                                {method === 'share' && <SharePasteUploader onUploadComplete={handleUploadComplete} />}
+                                {method === 'share' && <SharePasteUploader onUploadComplete={handleUploadComplete} onBack={() => setStep('target')} />}
 
                                 {result && result.courses?.length === 0 && method === 'pdf' && (
                                     <div className="mt-8 pt-6 border-t border-border space-y-4">

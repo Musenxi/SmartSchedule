@@ -30,10 +30,16 @@ model User {
   aiModel             String?  // e.g. 'gemini-3-flash-preview'
   aiApiKey            String?  // Encrypted API key
   aiEnabled           Boolean  @default(false)
+  role                Role     @default(USER) // 用户角色
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
   @@map("users")
+}
+
+enum Role {
+  USER
+  ADMIN
 }
 
 // 课表表
