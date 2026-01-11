@@ -735,6 +735,12 @@ export default function SchedulePage() {
           >
             导入课表
           </button>
+          <button
+            onClick={() => router.push('/profile')}
+            className="px-6 py-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-xl font-medium transition-colors"
+          >
+            个人中心
+          </button>
         </div>
       </div>
     );

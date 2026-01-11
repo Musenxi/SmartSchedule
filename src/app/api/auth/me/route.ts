@@ -150,6 +150,42 @@ export async function DELETE(request: NextRequest) {
             );
         }
 
+        // Check for GitHub account and revoke grant
+        const accounts = await prisma.account.findMany({
+            where: { userId: session.user.id }
+        });
+
+        const githubAccount = accounts.find(acc => acc.provider === 'github');
+
+        if (githubAccount && githubAccount.access_token) {
+            try {
+                const clientId = process.env.GITHUB_CLIENT_ID;
+                const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+
+                if (clientId && clientSecret) {
+                    const authHeader = 'Basic ' + Buffer.from(clientId + ':' + clientSecret).toString('base64');
+
+                    const revokeRes = await fetch(`https://api.github.com/applications/${clientId}/grant`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': authHeader,
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'SmartSchedule-App'
+                        },
+                        body: JSON.stringify({ access_token: githubAccount.access_token })
+                    });
+
+                    if (!revokeRes.ok) {
+                        console.warn('Failed to revoke GitHub grant:', await revokeRes.text());
+                    } else {
+                        console.log('Successfully revoked GitHub grant');
+                    }
+                }
+            } catch (revokeError) {
+                console.error('Error revoking GitHub grant:', revokeError);
+            }
+        }
+
         await prisma.user.delete({
             where: { id: session.user.id }
         });
