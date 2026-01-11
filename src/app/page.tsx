@@ -1,4 +1,27 @@
-export default function Home() {
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'smartschedule-secret-key-2026';
+
+export default async function Home() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('token')?.value;
+
+  if (token) {
+    let isValid = false;
+    try {
+      jwt.verify(token, JWT_SECRET);
+      isValid = true;
+    } catch (e) {
+      // Token invalid, stay on home page
+    }
+
+    if (isValid) {
+      redirect('/schedule');
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="text-center space-y-6">
