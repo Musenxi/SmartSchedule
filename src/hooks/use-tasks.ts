@@ -9,7 +9,7 @@ export function useTasks() {
     const storeTasks = useTaskStore((state) => state.tasks);
 
     // Fetch tasks
-    const { data: serverTasks, isLoading, error } = useQuery({
+    const { data: serverTasks, isLoading, error, refetch } = useQuery({
         queryKey: ['tasks'],
         queryFn: async () => {
             const res = await fetch('/api/tasks');
@@ -118,5 +118,6 @@ export function useTasks() {
         isCreating: createMutation.isPending,
         isUpdating: updateMutation.isPending,
         isDeleting: deleteMutation.isPending,
+        refetchTasks: refetch,
     };
 }

@@ -5,15 +5,17 @@ import { useTasks } from '@/hooks/use-tasks';
 import { Task } from '@/types/task';
 import { TaskItem } from './TaskItem';
 import { CreateTaskModal } from './CreateTaskModal';
+import { TaskImportModal } from './TaskImportModal';
 import { Plus, ListTodo, ChevronDown, ChevronRight, CheckCircle2, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isSameDay, isPast } from 'date-fns';
 import { useUIStore } from '@/stores/ui-store';
 
 export function TaskPanel() {
-    const { tasks, toggleTaskComplete, deleteTask, createTask, updateTask } = useTasks();
+    const { tasks, toggleTaskComplete, deleteTask, createTask, updateTask, refetchTasks } = useTasks();
     const [filter, setFilter] = useState<'all' | 'today' | 'todo'>('all');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
     const { openSettingsModal } = useUIStore();
@@ -26,24 +28,9 @@ export function TaskPanel() {
             const dueDate = new Date(task.dueDate);
             // 考试只要过了截止时间就算完成
             return isPast(dueDate) && !isSameDay(dueDate, today);
-            // 修正: 实际上用户说"到时间之后就完成". 
-            // 如果在今天且时间过了, 也算完成?
-            // 让我们使用简单的 isPast(dueDate)
-            // return new Date(task.dueDate) < new Date();
         }
         return false;
     };
-
-    // 我们需要一个更精确的判定
-    // 为了保持跟 TaskItem 一致: 
-    // const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate) && !task.completed;
-    // TaskItem 里: const isExamExpired = task.type === 'EXAM' && isOverdue;
-    // 所以过期才算完成? 
-    // 用户说: "考试的完成逻辑是到时间之后就完成"
-    // 这意味着哪怕是今天, 只要时间过了, 就算完成.
-    // 所以 TaskItem 的 isOverdue 逻辑可能需要调整?
-    // TaskItem 原逻辑: isPast && !isToday. 意味着今天过期的不算 overdue.
-    // 让我们先用 isPast(dueDate) 作为标准.
 
     const isCompletedEx = (t: Task) => {
         if (t.completed) return true;
@@ -71,12 +58,9 @@ export function TaskPanel() {
     let displayActive: Task[] = [];
     let displayCompleted: Task[] = [];
 
-
-
     if (filter === 'all') {
         displayActive = [...allActiveTasks].sort(sortTasks);
         displayCompleted = [...allCompletedTasks].sort((a, b) => {
-            // 完成的任务通常按完成时间或原始日期倒序？这里暂且按日期
             if (a.dueDate && b.dueDate) {
                 return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
             }
@@ -86,15 +70,9 @@ export function TaskPanel() {
         displayActive = allActiveTasks.filter(t => t.dueDate && isSameDay(new Date(t.dueDate), today)).sort(sortTasks);
         displayCompleted = allCompletedTasks.filter(t => t.dueDate && isSameDay(new Date(t.dueDate), today)).sort(sortTasks);
     } else if (filter === 'todo') {
-        // 待办：显示所有未完成 (包括过期、今天、未来、无日期)
         displayActive = [...allActiveTasks].sort(sortTasks);
-        displayCompleted = []; // 不显示已完成
+        displayCompleted = [];
     }
-
-    const stats = {
-        total: tasks.length,
-        completed: tasks.filter(t => t.completed).length,
-    };
 
     const handleEditTask = (task: Task) => {
         setEditingTask(task);
@@ -122,6 +100,13 @@ export function TaskPanel() {
                             title="设置"
                         >
                             <Settings className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => setIsImportModalOpen(true)}
+                            className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                            title="批量导入"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" x2="12" y1="3" y2="15" /></svg>
                         </button>
                         <button
                             onClick={() => {
@@ -175,8 +160,8 @@ export function TaskPanel() {
 
                 {/* Stats */}
                 <div className="flex justify-between text-xs text-muted-foreground px-1">
-                    <span>待办: {allActiveTasks.length}</span>
-                    <span>完成: {allCompletedTasks.length}</span>
+                    <span>待办: {displayActive.length}</span>
+                    <span>完成: {displayCompleted.length}</span>
                 </div>
             </div>
 
@@ -189,7 +174,6 @@ export function TaskPanel() {
                     </div>
                 ) : (
                     <>
-                        {/* 未完成任务 */}
                         <div className="space-y-3">
                             {displayActive.map((task) => (
                                 <TaskItem
@@ -202,7 +186,6 @@ export function TaskPanel() {
                             ))}
                         </div>
 
-                        {/* 已完成任务 - 可折叠 (仅在 all 和 today 模式下且有数据时显示) */}
                         {filter !== 'todo' && displayCompleted.length > 0 && (
                             <div className="mt-6">
                                 <button
@@ -243,6 +226,13 @@ export function TaskPanel() {
                         await createTask(taskInput);
                     }
                 }}
+            />
+
+            <TaskImportModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onImported={() => refetchTasks?.()}
+                existingTasks={tasks}
             />
         </div>
     );

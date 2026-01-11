@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { Upload, FileSpreadsheet, X, AlertCircle, Loader2, Download, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseCSV } from '@/lib/import/csv-parser';
+import { read, utils, writeFile } from 'xlsx';
 
 interface CSVUploaderProps {
     onUploadComplete: (data: any) => void;
@@ -30,11 +31,11 @@ export function CSVUploader({ onUploadComplete }: CSVUploaderProps) {
         e.preventDefault();
         setIsDragging(false);
         const droppedFile = e.dataTransfer.files[0];
-        if (droppedFile && (droppedFile.name.endsWith('.csv') || droppedFile.type === 'text/csv')) {
+        if (droppedFile && (droppedFile.name.endsWith('.csv') || droppedFile.name.endsWith('.xlsx') || droppedFile.type === 'text/csv' || droppedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
             setFile(droppedFile);
             setError(null);
         } else {
-            setError('请上传 CSV 文件');
+            setError('请上传 CSV 或 Excel (.xlsx) 文件');
         }
     };
 
@@ -53,11 +54,22 @@ export function CSVUploader({ onUploadComplete }: CSVUploaderProps) {
         setError(null);
 
         try {
-            const text = await file.text();
+            let text = '';
+
+            if (file.name.endsWith('.xlsx')) {
+                const buffer = await file.arrayBuffer();
+                const workbook = read(buffer, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                text = utils.sheet_to_csv(worksheet);
+            } else {
+                text = await file.text();
+            }
+
             const courses = parseCSV(text);
 
             if (courses.length === 0) {
-                throw new Error('未能从 CSV 中解析出课程，请检查格式是否正确');
+                throw new Error('未能从文件中解析出课程，请检查格式是否正确');
             }
 
             // Simulate parsing time
@@ -65,6 +77,7 @@ export function CSVUploader({ onUploadComplete }: CSVUploaderProps) {
 
             onUploadComplete({ courses });
         } catch (err) {
+            console.error(err);
             setError(err instanceof Error ? err.message : '文件解析失败，请重试');
         } finally {
             setUploading(false);
@@ -72,22 +85,19 @@ export function CSVUploader({ onUploadComplete }: CSVUploaderProps) {
     };
 
     const downloadTemplate = () => {
-        const headers = '课程名称,教师,地点,星期,开始节次,结束节次,周次,日期,学分\n';
-        const examples = [
-            '高等数学,张老师,教学楼 A101,1,1,2,1-8/10-16,,5.0',
-            '大学英语,李老师,外语楼 201,2,3,4,1/3/5/7-11,,3.0',
-            '数据结构,王老师,实验楼 302,3,5,6,1/3/5/7,,4.0',
-            '操作系统,赵老师,计算机楼401,4,7,8,2-16单,,3.5',
-            '补课-高数,张老师,教学楼A101,6,1,2,,2025/03/15-2025/03/22,',
-        ].join('\n');
-        const blob = new Blob(['\ufeff' + headers + examples], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', '课程导入模版.csv');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const headers = ["课程名称", "教师", "地点", "星期", "开始节次", "结束节次", "周次", "日期", "学分"];
+        const data = [
+            ["高等数学", "张老师", "教学楼 A101", 1, 1, 2, "1-8/10-16", "", 5.0],
+            ["大学英语", "李老师", "外语楼 201", 2, 3, 4, "1/3/5/7-11", "", 3.0],
+            ["数据结构", "王老师", "实验楼 302", 3, 5, 6, "1/3/5/7", "", 4.0],
+            ["操作系统", "赵老师", "计算机楼401", 4, 7, 8, "2-16单", "", 3.5],
+            ["补课-高数", "张老师", "教学楼A101", 6, 1, 2, "", "2025/03/15-2025/03/22", ""],
+        ];
+
+        const ws = utils.aoa_to_sheet([headers, ...data]);
+        const wb = utils.book_new();
+        utils.book_append_sheet(wb, ws, "课程导入模版");
+        writeFile(wb, "课程导入模版.xlsx");
     };
 
     return (
@@ -97,6 +107,7 @@ export function CSVUploader({ onUploadComplete }: CSVUploaderProps) {
                 <div className="space-y-1">
                     <p className="font-medium">导入说明</p>
                     <ul className="text-xs space-y-0.5 list-disc list-inside opacity-90">
+                        <li>支持 Excel (.xlsx) 和 CSV 格式</li>
                         <li>周次支持斜杠分隔，如：1/3/5、1-8/10-16</li>
                         <li>单独以日期导入（可选）格式为 YYYY/MM/DD，多日期用 - 分隔</li>
                         <li>如：2025/03/15 - 2025/03/22</li>
@@ -110,8 +121,8 @@ export function CSVUploader({ onUploadComplete }: CSVUploaderProps) {
                         <FileSpreadsheet className="w-5 h-5" />
                     </div>
                     <div className="text-sm">
-                        <div className="font-medium text-foreground">课程导入模版.csv</div>
-                        <div className="text-muted-foreground">支持单双周，如 1-16单、2-16双</div>
+                        <div className="font-medium text-foreground">课程导入模版</div>
+                        <div className="text-muted-foreground">推荐使用 .xlsx 格式</div>
                     </div>
                 </div>
                 <button
@@ -119,7 +130,7 @@ export function CSVUploader({ onUploadComplete }: CSVUploaderProps) {
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded-lg hover:bg-primary/20 transition-colors"
                 >
                     <Download className="w-3.5 h-3.5" />
-                    下载
+                    下载 .xlsx
                 </button>
             </div>
 
@@ -137,7 +148,7 @@ export function CSVUploader({ onUploadComplete }: CSVUploaderProps) {
                 <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".csv"
+                    accept=".csv,.xlsx"
                     className="hidden"
                     onChange={handleFileSelect}
                 />
@@ -167,10 +178,10 @@ export function CSVUploader({ onUploadComplete }: CSVUploaderProps) {
                             <Upload className="w-6 h-6" />
                         </div>
                         <h3 className="font-medium text-foreground mb-1">
-                            点击或拖拽上传 CSV
+                            点击或拖拽上传
                         </h3>
                         <p className="text-xs text-muted-foreground">
-                            支持批量导入多门课程
+                            支持 .xlsx 或 .csv 格式
                         </p>
                     </>
                 )}

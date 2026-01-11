@@ -56,8 +56,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'API Key is required' }, { status: 400 });
         }
 
-        if (provider !== 'gemini') {
-            return NextResponse.json({ success: false, error: 'Only Gemini is supported' }, { status: 400 });
+        // Default to gemini if not specified
+        const providerName = (provider || 'gemini').toLowerCase();
+
+        if (providerName !== 'gemini') {
+            return NextResponse.json({ success: false, error: `Only Gemini is supported (received: ${provider})` }, { status: 400 });
         }
 
         // Test the API key with a simple request

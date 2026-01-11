@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { GoogleGenAI } from '@google/genai';
-import { PDFDocument } from 'pdf-lib';
 import crypto from 'crypto';
 
 // Encryption helpers
@@ -105,87 +104,63 @@ export async function POST(request: NextRequest) {
         const modelName = requestModel || userData.aiModel || 'gemini-2.0-flash';
         console.log(`Using model: ${modelName}`);
 
-        // Create the prompt for schedule extraction with emphasis on odd/even weeks
-        const prompt = `Carefully analyze this course schedule document (image or PDF) and extract ALL course information with precise details.
+        // Create the prompt based on request type
+        const type = formData.get('type') as string;
+        let prompt = '';
 
-CRITICAL PARSING RULES:
+        if (type === 'exam') {
+            console.log('Using EXAM recognition prompt');
+            prompt = `Extract all exam information from this image/PDF as a JSON array.
 
-1. EACH COURSE TIME SLOT = ONE JSON ENTRY
-   - If a course appears multiple times (different days/times), create SEPARATE entries
-   - Example: "甘薯食品加工与创新实践" appears 3 times → create 3 separate JSON objects
+RULES:
+1. Return ONLY a JSON array.
+2. Date format: "YYYY-MM-DD"
+3. Time format: "HH:mm" (24-hour)
 
-2. PERIOD NUMBERS (节次):
-   - Format: "(开始节-结束节)" like "(1-4节)" 
-   - "(1-4节)" means periods 1 through 4 → startPeriod: 1, endPeriod: 4
-   - "(3-5节)" means periods 3 through 5 → startPeriod: 3, endPeriod: 5
-   - "(8-9节)" means periods 8 through 9 → startPeriod: 8, endPeriod: 9
-   - NEVER split them! "(1-4节)" is ONE time slot, not multiple
+JSON fields:
+- title: string (Course name)
+- date: string (YYYY-MM-DD)
+- startTime: string (HH:mm)
+- endTime: string (HH:mm)
+- location: string (Exam location)
+- seatNumber: string (Optional, seat number)
+- description: string (Optional, exam name or type)
 
-3. WEEK NUMBERS (周次):
-   - Format after period: "11周" or "1-16周" or complex patterns
-   - "11周" → "11" (single week)
-   - "6周,10周" → "6,10" (specific weeks)
-   - "1-16周" → "1-16" (range)
-   - "(1-4节)11周" means → startPeriod: 1, endPeriod: 4, weekRange: "11"
+Example Output:
+[{"title":"Advanced Math","date":"2026-01-15","startTime":"09:00","endTime":"11:00","location":"Online","seatNumber":"12","description":"Final Exam"}]`;
+        } else {
+            // Default to course schedule prompt
+            console.log('Using COURSE SCHEDULE recognition prompt');
+            prompt = `Extract all course information from this schedule (image/PDF) as JSON array. Supports both Chinese and English schedules.
 
-3. WEEK PATTERNS:
-When you see something like "1-6周，8-10周（双），11-13周，15-16周":
-- "1-6周" means weeks 1-6 (every week) → "1-6"
-- "8-10周（双）" means weeks 8-10 (even weeks only) → "8-10双" 
-- "11-13周" means weeks 11-13 (every week) → "11-13"
-- "15-16周" means weeks 15-16 (every week) → "15-16"
-- Combine them with commas: "1-6,8-10双,11-13,15-16"
+RULES:
+1. One time slot = one JSON entry (same course at different times = separate entries)
+2. Period parsing:
+   - "1-4节" or "Period 1-4" → startPeriod: 1, endPeriod: 4
+   - "Section 1-3" → startPeriod: 1, endPeriod: 3
+3. Week parsing:
+   - "11周" or "Week 11" → "11"
+   - "1-16周" or "Weeks 1-16" → "1-16"
+   - "1-6周，8-10周（双）" or "Weeks 1-6, 8-10 (Even)" → "1-6,8-10(Even)"
+   - （单）/（ODD）or （双）/（EVEN）marks the preceding range
+4. Day of Week:
+   - Mon/Monday/周一 → 1
+   - ...
+   - Sun/Sunday/周日 → 7
 
-The （单）or（双）marking ONLY applies to the range immediately before it, NOT the entire string!
+JSON fields (return English keys):
+- name: string (Course Name / Title)
+- teacher: string (Optional, Instructor / Lecturer)
+- location: string (Optional, Room / Classroom / Venue)
+- credits: number (Optional, Credits / Units)
+- dayOfWeek: number (1-7)
+- startPeriod: number (Integer)
+- endPeriod: number (Integer)
+- weekRange: string (Raw string found, e.g., "1-16")
 
-Return a JSON array with these fields for EACH course:
-- name: course name (string)
-- teacher: teacher name (string, optional)
-- location: classroom location (string, optional) - CRITICAL FORMAT:
-  * If campus is mentioned: "校区名 教室" (space separated)
-    Examples: "东湖校区 学4楼503", "仙林校区 教A101", "鼓楼校区 逸夫楼201"
-  * If no campus: just "教室"
-    Examples: "教三-201", "学4楼503"
-  * NEVER use "/" or "场地:" or other separators
-  * IGNORE "教学班组成" - only extract actual teaching location
-- credits: course credits (number, optional) - 学分，如 2.0, 3.0, 4.5
-- dayOfWeek: day of week (number, 1=Monday, 7=Sunday)
-- startPeriod: start period number (number, starting from 1)
-- endPeriod: end period number (number)
-- weekRange: week range (string) - IMPORTANT FORMAT RULES:
-  * Regular consecutive weeks: "1-16"
-  * Multiple ranges: "1-6,8-10,11-13,15-16"
-  * Odd weeks for entire range: "1-16单"
-  * Even weeks for entire range: "1-16双"
-  * MIXED (some ranges odd/even): "1-6,8-10双,11-13" (only mark the specific range)
-  * Examples:
-    - "1-6周，8-10周（双），11-13周" → "1-6,8-10双,11-13"
-    - "1-8周（单），9-16周" → "1-8单,9-16"
-    - "全周" or "1-16周" → "1-16"
-
-Return ONLY the JSON array. Example (same course name, different times = separate entries):
-[
-  {
-    "name": "甘薯食品加工与创新实践",
-    "teacher": "成纪予",
-    "location": "东湖校区 食品加工中试基地(小西门)",
-    "credits": 1.0,
-    "dayOfWeek": 6,
-    "startPeriod": 1,
-    "endPeriod": 4,
-    "weekRange": "11"
-  },
-  {
-    "name": "甘薯食品加工与创新实践",
-    "teacher": "成纪予",
-    "location": "东湖校区 食品加工中试基地(小西门)",
-    "credits": 1.0,
-    "dayOfWeek": 6,
-    "startPeriod": 1,
-    "endPeriod": 2,
-    "weekRange": "6,10"
-  }
-]`;
+Return ONLY JSON array:
+[{"name":"Calculus I","teacher":"John Doe","location":"Building A 101","credits":4.0,"dayOfWeek":1,"startPeriod":1,"endPeriod":2,"weekRange":"1-16"}]`;
+        }
 
         // Call Gemini Vision API with new SDK
         console.log('Calling Gemini with new SDK...');

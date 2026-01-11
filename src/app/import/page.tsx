@@ -470,7 +470,7 @@ function ImportPageContent() {
                                         <FileSpreadsheet className="w-5 h-5" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">CSV 表格导入</h3>
+                                        <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">表格导入</h3>
                                         <p className="text-sm text-muted-foreground leading-normal">
                                             使用 Excel 或 CSV 模版整理数据。<br />适合批量处理结构化课程信息。
                                         </p>
