@@ -657,7 +657,7 @@ export default function SchedulePage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-4 p-4">
         <div className="text-center space-y-2">
-          <h2 className="text-xl font-semibold">Hi！{username || '用户'}</h2>
+          <h2 className="text-xl font-semibold">{username ? `Hi！${username}` : 'Hi there'}</h2>
           <p className="text-muted-foreground">还没有课表，立即创建或导入一个吧</p>
         </div>
         <div className="flex gap-3">
