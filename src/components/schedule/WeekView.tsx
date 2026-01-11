@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState, useCallback } from 'react';
+import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { TimeGrid } from './TimeGrid';
 import { WeekHeader } from './WeekHeader';
 import { CourseCard } from './CourseCard';
@@ -211,33 +211,56 @@ export function WeekView({
     }, [periodHeight, periods.length]);
 
     // Grid cell selection handlers
+    const dragDidMove = useRef(false);
+    const resizeHandle = useRef<'top' | 'bottom' | null>(null);
+
     const handleGridMouseDown = useCallback((e: React.MouseEvent, day: number, gridElement: HTMLElement) => {
         // Ignore if clicking on a course card
         if ((e.target as HTMLElement).closest('[data-course-card]')) return;
 
-        // If clicking on the selection overlay, let its click handler handle it
-        if ((e.target as HTMLElement).closest('[data-selection-overlay]')) {
-            return;
-        }
+        const target = e.target as HTMLElement;
+        const isOverlay = target.closest('[data-selection-overlay]');
+        const isHandle = target.dataset.handle;
 
         const period = getPeriodFromY(e.clientY, gridElement);
 
-        // If there's already a selection, clicking elsewhere clears it
-        if (selection) {
+        // If clicking elsewhere (not on overlay) and there's a selection, clear it
+        if (selection && !isOverlay) {
             setSelection(null);
             return;
         }
 
-        // Check if this period overlaps with any existing course on this day
-        const dayCourses = coursesByDay[day] || [];
-        const hasOverlap = dayCourses.some(({ time }) =>
-            period >= time.startPeriod && period <= time.endPeriod
-        );
-        if (hasOverlap) return;
+        // Initialize drag
+        if (!isOverlay) {
+            // New selection
+            const dayCourses = coursesByDay[day] || [];
+            const hasOverlap = dayCourses.some(({ time }) =>
+                period >= time.startPeriod && period <= time.endPeriod
+            );
+            if (hasOverlap) return;
 
-        setSelection({ day, startPeriod: period, endPeriod: period });
+            setSelection({ day, startPeriod: period, endPeriod: period });
+            dragStartPeriod.current = period;
+            resizeHandle.current = null;
+        } else if (selection) {
+            // Resize or potentially move (but we treat move as click to add for now unless handle used)
+            if (isHandle === 'top') {
+                resizeHandle.current = 'top';
+                dragStartPeriod.current = selection.endPeriod; // Anchor is bottom
+            } else if (isHandle === 'bottom') {
+                resizeHandle.current = 'bottom';
+                dragStartPeriod.current = selection.startPeriod; // Anchor is top
+            } else {
+                // Clicking body - standard re-select or prepare for click
+                // We DO NOT reset selection here immediately. We wait for drag.
+                resizeHandle.current = null;
+                dragStartPeriod.current = period;
+                // setSelection({ day, startPeriod: period, endPeriod: period }); // Removed to fix click bug
+            }
+        }
+
         setIsDragging(true);
-        dragStartPeriod.current = period;
+        dragDidMove.current = false;
         e.preventDefault();
     }, [getPeriodFromY, selection, coursesByDay]);
 
@@ -245,13 +268,123 @@ export function WeekView({
         if (!isDragging || !selection || selection.day !== day) return;
 
         const period = getPeriodFromY(e.clientY, gridElement);
-        const start = Math.min(dragStartPeriod.current!, period);
-        const end = Math.max(dragStartPeriod.current!, period);
+
+        // If body drag (no handle) and period hasn't changed, ignore (prevents jitter reset)
+        if (!resizeHandle.current && period === dragStartPeriod.current) {
+            return;
+        }
+
+        dragDidMove.current = true;
+
+        let start, end;
+        if (resizeHandle.current === 'top') {
+            // Anchor is dragStartPeriod.current (which is Bottom), we are moving Top
+            // period is new Top. 
+            // Ensure we don't cross anchor in a weird way? For schedule, start <= end.
+            const anchor = dragStartPeriod.current!;
+            start = Math.min(period, anchor);
+            end = Math.max(period, anchor);
+        } else if (resizeHandle.current === 'bottom') {
+            // Anchor is dragStartPeriod.current (which is Top), we are moving Bottom
+            const anchor = dragStartPeriod.current!;
+            start = Math.min(period, anchor);
+            end = Math.max(period, anchor);
+        } else {
+            // Standard drag (re-select)
+            const anchor = dragStartPeriod.current!;
+            start = Math.min(anchor, period);
+            end = Math.max(anchor, period);
+        }
+
         setSelection({ day, startPeriod: start, endPeriod: end });
     }, [isDragging, selection, getPeriodFromY]);
 
     const handleGridMouseUp = useCallback(() => {
         setIsDragging(false);
+        resizeHandle.current = null;
+    }, []);
+
+    // Touch event handlers for mobile
+    const handleGridTouchStart = useCallback((e: React.TouchEvent, day: number, gridElement: HTMLElement) => {
+        // Ignore if touching a course card
+        if ((e.target as HTMLElement).closest('[data-course-card]')) return;
+
+        const target = e.target as HTMLElement;
+        const isOverlay = target.closest('[data-selection-overlay]');
+        const isHandle = target.dataset.handle;
+
+        const touch = e.touches[0];
+        const period = getPeriodFromY(touch.clientY, gridElement);
+
+        if (selection && !isOverlay) {
+            setSelection(null);
+            return;
+        }
+
+        // Init drag
+        if (!isOverlay) {
+            // New selection checks
+            const dayCourses = coursesByDay[day] || [];
+            const hasOverlap = dayCourses.some(({ time }) =>
+                period >= time.startPeriod && period <= time.endPeriod
+            );
+            if (hasOverlap) return;
+
+            setSelection({ day, startPeriod: period, endPeriod: period });
+            dragStartPeriod.current = period;
+            resizeHandle.current = null;
+        } else if (selection) {
+            if (isHandle === 'top') {
+                resizeHandle.current = 'top';
+                dragStartPeriod.current = selection.endPeriod;
+            } else if (isHandle === 'bottom') {
+                resizeHandle.current = 'bottom';
+                dragStartPeriod.current = selection.startPeriod;
+            } else {
+                resizeHandle.current = null;
+                dragStartPeriod.current = period;
+                // setSelection({ day, startPeriod: period, endPeriod: period }); // Removed
+            }
+        }
+
+        setIsDragging(true);
+        dragDidMove.current = false;
+    }, [getPeriodFromY, selection, coursesByDay]);
+
+    const handleGridTouchMove = useCallback((e: React.TouchEvent, day: number, gridElement: HTMLElement) => {
+        if (!isDragging || !selection || selection.day !== day) return;
+
+        const touch = e.touches[0];
+        const period = getPeriodFromY(touch.clientY, gridElement);
+
+        // If body drag (no handle) and period hasn't changed, ignore
+        if (!resizeHandle.current && period === dragStartPeriod.current) {
+            return;
+        }
+
+        dragDidMove.current = true;
+
+        let start, end;
+        if (resizeHandle.current === 'top') {
+            const anchor = dragStartPeriod.current!;
+            start = Math.min(period, anchor);
+            end = Math.max(period, anchor);
+        } else if (resizeHandle.current === 'bottom') {
+            const anchor = dragStartPeriod.current!;
+            start = Math.min(period, anchor);
+            end = Math.max(period, anchor);
+        } else {
+            const anchor = dragStartPeriod.current!;
+            start = Math.min(anchor, period);
+            end = Math.max(anchor, period);
+        }
+
+        setSelection({ day, startPeriod: start, endPeriod: end });
+    }, [isDragging, selection, getPeriodFromY]);
+
+    const handleGridTouchEnd = useCallback(() => {
+        setIsDragging(false);
+        resizeHandle.current = null;
     }, []);
 
     // Clear selection when clicking outside
@@ -261,13 +394,39 @@ export function WeekView({
         }
     }, [isDragging]);
 
-    // Handle add button click
+    // Handle add button click -> Now only if NOT dragged
     const handleAddClick = useCallback(() => {
+        if (dragDidMove.current) {
+            return; // If moved, do not trigger click
+        }
         if (selection && onEmptyCellSelect) {
             onEmptyCellSelect(selection.day, selection.startPeriod, selection.endPeriod);
             setSelection(null);
         }
     }, [selection, onEmptyCellSelect]);
+
+    // Global click listener to clear selection when clicking outside
+    const gridContainerRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!selection) return;
+
+        const handleGlobalClick = (e: MouseEvent) => {
+            // If clicking inside the grid container, let the grid handlers handle it
+            if (gridContainerRef.current?.contains(e.target as Node)) return;
+            // Clear selection when clicking outside
+            setSelection(null);
+        };
+
+        // Use setTimeout to avoid clearing on the same click that created the selection
+        const timer = setTimeout(() => {
+            document.addEventListener('click', handleGlobalClick);
+        }, 0);
+
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('click', handleGlobalClick);
+        };
+    }, [selection]);
 
     return (
         <div
@@ -287,7 +446,10 @@ export function WeekView({
 
             {/* 课表网格 - 滚动容器 */}
             <div
-                ref={bodyRef}
+                ref={(el) => {
+                    bodyRef.current = el;
+                    gridContainerRef.current = el;
+                }}
                 className="flex-1 overflow-auto relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
                 onScroll={handleScroll}
             >
@@ -302,14 +464,21 @@ export function WeekView({
                     </div>
 
                     {/* 每天的列 */}
-                    <div className="flex flex-1" onMouseUp={handleGridMouseUp} onMouseLeave={handleGridMouseUp}>
+                    <div
+                        className="flex flex-1"
+                        onMouseUp={handleGridMouseUp}
+                        onMouseLeave={handleGridMouseUp}
+                        onTouchEnd={handleGridTouchEnd}
+                    >
                         {visibleDays.map((day) => (
                             <div
                                 key={day}
-                                className="flex-1 relative border-r border-dashed border-muted-foreground/20 min-w-0 cursor-pointer"
+                                className="flex-1 relative border-r border-dashed border-muted-foreground/20 min-w-0 cursor-pointer touch-none"
                                 style={{ minHeight: gridHeight }}
                                 onMouseDown={(e) => handleGridMouseDown(e, day, e.currentTarget)}
                                 onMouseMove={(e) => handleGridMouseMove(e, day, e.currentTarget)}
+                                onTouchStart={(e) => handleGridTouchStart(e, day, e.currentTarget)}
+                                onTouchMove={(e) => handleGridTouchMove(e, day, e.currentTarget)}
                             >
                                 {/* 网格线 */}
                                 {showGridLines && periods.map((period) => (
@@ -320,20 +489,27 @@ export function WeekView({
                                     />
                                 ))}
 
-                                {/* 选中覆盖层 */}
+                                {/* Selection Overlay */}
                                 {selection && selection.day === day && (
                                     <div
                                         data-selection-overlay
-                                        className="absolute left-[2px] right-[2px] bg-primary/20 border-2 border-primary border-dashed rounded-lg z-10 cursor-pointer hover:bg-primary/30 transition-colors"
+                                        className="absolute left-0 right-0 z-10 border-2 border-dashed border-primary bg-primary/10 rounded pointer-events-auto cursor-pointer flex items-center justify-center p-1"
                                         style={{
                                             top: (selection.startPeriod - 1) * periodHeight + 2,
                                             height: (selection.endPeriod - selection.startPeriod + 1) * periodHeight - 4,
                                         }}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleAddClick();
-                                        }}
-                                    />
+                                        onClick={handleAddClick}
+                                    >
+                                        {/* Resize Handles */}
+                                        <div
+                                            data-handle="top"
+                                            className="absolute top-0 left-0 right-0 h-3 cursor-ns-resize z-20 hover:bg-primary/20 transition-colors rounded-t"
+                                        />
+                                        <div
+                                            data-handle="bottom"
+                                            className="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize z-20 hover:bg-primary/20 transition-colors rounded-b"
+                                        />
+                                    </div>
                                 )}
 
                                 {/* 课程卡片 */}

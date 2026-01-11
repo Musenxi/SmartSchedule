@@ -33,6 +33,17 @@ const COLORS = [
     '#14B8A6', // Teal
 ];
 
+// Fallback for crypto.randomUUID which is only available in secure contexts (HTTPS/localhost)
+function generateId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
 export function AddCourseModal({
     isOpen,
     onClose,
@@ -48,7 +59,7 @@ export function AddCourseModal({
     const handleSubmit = async (data: CourseFormData) => {
         setLoading(true);
         try {
-            await createCourse({
+            const payload = {
                 scheduleId,
                 name: data.name,
                 color: data.color,
@@ -62,7 +73,9 @@ export function AddCourseModal({
                     ...(t.teacher ? { teacher: t.teacher } : {}),
                     ...(t.location ? { location: t.location } : {}),
                 })),
-            });
+            };
+            console.log('Submitting course data:', payload);
+            await createCourse(payload);
             onSuccess?.();
             onClose();
         } catch (error) {
@@ -80,7 +93,7 @@ export function AddCourseModal({
         note: '',
         teacher: '',
         times: initialTimeSlot ? [{
-            id: crypto.randomUUID(),
+            id: generateId(),
             courseId: '',
             dayOfWeek: initialTimeSlot.dayOfWeek,
             startPeriod: initialTimeSlot.startPeriod,

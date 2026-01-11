@@ -11,7 +11,16 @@ export function useCourses() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
             });
-            if (!res.ok) throw new Error('Failed to create course');
+            if (!res.ok) {
+                let errorDetails;
+                try {
+                    errorDetails = await res.json();
+                } catch (e) {
+                    errorDetails = { error: await res.text() };
+                }
+                console.error('Create course failed:', errorDetails);
+                throw new Error(errorDetails.error || 'Failed to create course');
+            }
             return res.json() as Promise<Course>;
         },
         onSettled: () => {
