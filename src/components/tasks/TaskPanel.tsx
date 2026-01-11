@@ -226,6 +226,10 @@ export function TaskPanel() {
                         await createTask(taskInput);
                     }
                 }}
+                onImport={() => {
+                    setIsCreateModalOpen(false);
+                    setIsImportModalOpen(true);
+                }}
             />
 
             <TaskImportModal

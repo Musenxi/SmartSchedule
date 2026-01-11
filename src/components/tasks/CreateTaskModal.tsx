@@ -22,9 +22,10 @@ interface CreateTaskModalProps {
     onSubmit: (task: TaskInput) => Promise<void>;
     courseId?: string; // 可选的预设课程ID
     initialData?: Task; // 编辑模式下的初始数据
+    onImport?: () => void;
 }
 
-export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialData }: CreateTaskModalProps) {
+export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialData, onImport }: CreateTaskModalProps) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [type, setType] = useState<TaskType>('HOMEWORK');
@@ -207,6 +208,20 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                                     </button>
                                 ))}
                             </div>
+                            {type === 'EXAM' && onImport && (
+                                <div className="mt-2 text-right">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            onClose();
+                                            onImport();
+                                        }}
+                                        className="text-xs text-primary hover:underline flex items-center justify-end gap-1 w-full"
+                                    >
+                                        想要批量导入？
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div>
