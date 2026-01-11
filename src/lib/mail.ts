@@ -72,13 +72,16 @@ export async function isSMTPConfigured(): Promise<boolean> {
     const settings = await prisma.systemSetting.findMany({
         where: {
             key: {
-                in: ['smtp_host', 'smtp_user', 'smtp_password']
+                in: ['smtp_host', 'smtp_user', 'smtp_password', 'smtp_enabled']
             }
         }
     });
 
     const config: Record<string, string> = {};
     settings.forEach(s => config[s.key] = s.value);
+
+    // If explicitly disabled, return false
+    if (config.smtp_enabled !== 'true') return false;
 
     return !!(config.smtp_host && config.smtp_user && config.smtp_password);
 }
