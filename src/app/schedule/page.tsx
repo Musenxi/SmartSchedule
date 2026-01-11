@@ -290,7 +290,7 @@ export default function SchedulePage() {
     };
 
     return tasks
-      .filter(t => t.showInSchedule && (t.type === 'EXAM' || t.type === 'EVENT') && t.startTime && t.dueDate)
+      .filter(t => t.showInSchedule && t.startTime && t.dueDate)
       .map(t => {
         const start = typeof t.startTime === 'string' ? parseISO(t.startTime) : t.startTime!;
         const end = typeof t.dueDate === 'string' ? parseISO(t.dueDate) : t.dueDate!;
@@ -303,11 +303,33 @@ export default function SchedulePage() {
         const startPeriod = findPeriodByTime(startStr);
         const endPeriod = findPeriodByTime(endStr);
 
+        let color = '#3b82f6'; // Default Blue
+        let typeName = '任务';
+
+        switch (t.type) {
+          case 'EXAM':
+            color = '#ef4444'; // Red
+            typeName = '考试';
+            break;
+          case 'EVENT':
+            color = '#f59e0b'; // Amber
+            typeName = '活动';
+            break;
+          case 'HOMEWORK':
+            color = '#8b5cf6'; // Violet
+            typeName = '作业';
+            break;
+          case 'CUSTOM':
+            color = '#10b981'; // Emerald
+            typeName = '其他';
+            break;
+        }
+
         return {
           id: `task-${t.id}`,
           scheduleId: schedule.id,
           name: t.title,
-          color: t.type === 'EXAM' ? '#ef4444' : '#f59e0b',
+          color: color,
           times: [{
             id: `task-time-${t.id}`,
             courseId: `task-${t.id}`,
@@ -316,7 +338,7 @@ export default function SchedulePage() {
             endPeriod: Math.max(startPeriod, endPeriod),
             weekRange: String(week),
             location: t.location || '',
-            teacher: t.type === 'EXAM' ? '考试' : '活动'
+            teacher: typeName
           }] as any[],
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -324,7 +346,7 @@ export default function SchedulePage() {
       });
   }, [tasks, schedule]);
 
-  // 将作业/其他任务转换为截止时间线标记
+  // 将没有开始时间的作业/其他任务转换为截止时间线标记
   const deadlineMarkers = useMemo(() => {
     if (!tasks || !schedule || globalTimeTables.length === 0) return [];
 
@@ -344,7 +366,7 @@ export default function SchedulePage() {
     const gridTotalMinutes = gridEndMinutes - gridStartMinutes;
 
     return tasks
-      .filter(t => t.showInSchedule && !t.completed && (t.type === 'HOMEWORK' || t.type === 'CUSTOM') && t.dueDate)
+      .filter(t => t.showInSchedule && !t.completed && (t.type === 'HOMEWORK' || t.type === 'CUSTOM') && !t.startTime && t.dueDate)
       .map(t => {
         const due = typeof t.dueDate === 'string' ? parseISO(t.dueDate) : t.dueDate!;
         const week = getCurrentWeek(new Date(schedule.firstWeekStart), due);

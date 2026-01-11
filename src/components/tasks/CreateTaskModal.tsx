@@ -34,6 +34,9 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
     const [showInSchedule, setShowInSchedule] = useState(true);
     const [location, setLocation] = useState('');
 
+    // Range Mode State (Controls whether to show start time + location)
+    const [isTimeRangeMode, setIsTimeRangeMode] = useState(false);
+
     // 不同类型的时间字段不同
     // 作业: 只需截止时间
     // 考试/活动: 需要开始时间和结束时间
@@ -67,13 +70,17 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                 setType(initialData.type);
 
                 // 处理时间
-                if (initialData.startTime && (initialData.type === 'EXAM' || initialData.type === 'EVENT')) {
+                if (initialData.startTime) {
+                    // 如果有开始时间，启用时间段模式
+                    setIsTimeRangeMode(true);
                     const start = typeof initialData.startTime === 'string'
                         ? parseISO(initialData.startTime)
                         : initialData.startTime;
                     setDate(format(start, 'yyyy-MM-dd'));
                     setStartTime(format(start, 'HH:mm'));
                 } else if (initialData.dueDate) {
+                    // 只有截止时间
+                    setIsTimeRangeMode(false);
                     const due = typeof initialData.dueDate === 'string'
                         ? parseISO(initialData.dueDate)
                         : initialData.dueDate;
@@ -98,8 +105,9 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                 setStartTime('08:00');
                 setEndTime('10:00');
                 setLocation('');
-                // Homework/Custom defaults to false, Exam/Event defaults to true
+                // Homework default
                 setShowInSchedule(false);
+                setIsTimeRangeMode(false);
             }
         }
     }, [isOpen, initialData]);
@@ -110,7 +118,8 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
 
         setLoading(true);
         try {
-            const hasRange = type === 'EXAM' || type === 'EVENT';
+            // Use isTimeRangeMode to decide submission logic
+            const hasRange = isTimeRangeMode;
 
             let start: Date | undefined;
             let due: Date;
@@ -134,11 +143,11 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                 title,
                 description,
                 type,
-                startTime: start?.toISOString(), // 仅 EXAM/EVENT 有 startTime
+                startTime: start?.toISOString(), // 仅开启时间段模式才有 startTime
                 dueDate: due.toISOString(),
                 courseId: initialData ? (initialData.courseId || undefined) : courseId, // 保持原有的 courseId 或使用传入的
                 location: hasRange ? location : undefined,
-                showInSchedule: hasRange ? showInSchedule : undefined,
+                showInSchedule: showInSchedule, // Always submit showInSchedule
             });
             onClose();
         } catch (e) {
@@ -180,11 +189,13 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                                         type="button"
                                         onClick={() => {
                                             setType(t);
-                                            // Auto-set default showInSchedule based on type
-                                            if (t === 'HOMEWORK' || t === 'CUSTOM') {
-                                                setShowInSchedule(false);
-                                            } else {
+                                            // Auto-set default mode and showInSchedule based on type
+                                            if (t === 'EXAM' || t === 'EVENT') {
+                                                setIsTimeRangeMode(true);
                                                 setShowInSchedule(true);
+                                            } else {
+                                                setIsTimeRangeMode(false);
+                                                setShowInSchedule(false);
                                             }
                                         }}
                                         className={`flex-1 py-2 text-sm rounded-lg border transition-all ${type === t
@@ -212,7 +223,7 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className={isRangeType ? "col-span-1 sm:col-span-2" : "col-span-1"}>
+                            <div className={isTimeRangeMode ? "col-span-1 sm:col-span-2" : "col-span-1"}>
                                 <label className="block text-sm font-medium text-foreground mb-1">日期</label>
                                 <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                                     <PopoverTrigger asChild>
@@ -241,7 +252,7 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                             </div>
 
                             {/* 时间输入逻辑 */}
-                            {isRangeType ? (
+                            {isTimeRangeMode ? (
                                 <>
                                     <div className="col-span-1 sm:col-span-2">
                                         <label className="block text-sm font-medium text-foreground mb-1">地点 (可选)</label>
@@ -263,7 +274,6 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                                         value={endTime}
                                         onChange={setEndTime}
                                     />
-
                                 </>
                             ) : (
                                 <CustomTimePicker
@@ -296,6 +306,32 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                                     显示在课表中
                                 </label>
                             </div>
+
+                            {!isRangeType && (
+                                <div className="col-span-1 sm:col-span-2 flex items-center gap-2 mt-1">
+                                    <div className="relative flex items-center justify-center w-5 h-5">
+                                        <input
+                                            type="checkbox"
+                                            id="enableTimeRange"
+                                            checked={isTimeRangeMode}
+                                            onChange={(e) => setIsTimeRangeMode(e.target.checked)}
+                                            className="peer appearance-none w-5 h-5 border-2 border-muted-foreground/30 rounded-full checked:bg-primary checked:border-primary transition-all cursor-pointer"
+                                        />
+                                        <svg
+                                            className="absolute w-3 h-3 text-primary-foreground pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth="3"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                        </svg>
+                                    </div>
+                                    <label htmlFor="enableTimeRange" className="text-sm text-foreground select-none cursor-pointer">
+                                        作为卡片显示
+                                    </label>
+                                </div>
+                            )}
                         </div>
 
                         <div>
