@@ -37,7 +37,7 @@ export class ExamParser {
             if (!courseName || !timeStr) return null;
 
             const { start, end } = this.parseTime(timeStr);
-            const fullLocation = seatNumber ? `${location} (座号: ${seatNumber})` : location;
+            const fullLocation = seatNumber ? `${location} 座号:${seatNumber.replace(/[()（）]/g, '')}` : location;
 
             return {
                 title: courseName,
@@ -80,7 +80,7 @@ export class ExamParser {
             const seat = cols[seatIdx] || '';
             const examName = cols[descIdx] || '';
 
-            const fullLocation = seat ? `${loc} (座号: ${seat})` : loc;
+            const fullLocation = seat ? `${loc} 座号:${seat.replace(/[()（）]/g, '')}` : loc;
 
             return {
                 title,
@@ -132,7 +132,7 @@ export class ExamParser {
             const seat = row[seatIdx] || '';
             const examName = row[descIdx] || '';
 
-            const fullLocation = seat ? `${loc} (座号: ${seat})` : String(loc);
+            const fullLocation = seat ? `${loc} 座号:${String(seat).replace(/[()（）]/g, '')}` : String(loc);
 
             return {
                 title: String(title),
@@ -201,7 +201,7 @@ export class ExamParser {
             const seat = cols[seatIdx] || '';
             const examName = cols[descIdx] || '';
 
-            const fullLocation = seat ? `${loc} (座号: ${seat})` : loc;
+            const fullLocation = seat ? `${loc} 座号:${seat.replace(/[()（）]/g, '')}` : loc;
 
             return {
                 title,

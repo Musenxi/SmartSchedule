@@ -168,7 +168,7 @@ export function TaskImportModal({ isOpen, onClose, onImported, existingTasks = [
                     description: c.description || '',
                     startTime: new Date(`${c.date}T${c.startTime}:00`).toISOString(),
                     endTime: new Date(`${c.date}T${c.endTime}:00`).toISOString(),
-                    location: c.seatNumber ? `${c.location} (座号: ${c.seatNumber})` : c.location,
+                    location: c.seatNumber ? `${c.location} 座号:${String(c.seatNumber).replace(/[()（）]/g, '')}` : c.location,
                     type: 'EXAM'
                 }));
                 setParsedTasks(mappedTasks);
