@@ -2,10 +2,20 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { WeekView, ScheduleToolbar } from '@/components/schedule';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
-import { TaskPanel } from '@/components/tasks/TaskPanel';
+const TaskPanel = dynamic(() => import('@/components/tasks/TaskPanel').then(m => m.TaskPanel), {
+  ssr: false,
+  loading: () => <div className="p-4 animate-pulse space-y-4">
+    <div className="h-8 bg-muted rounded w-1/3" />
+    <div className="space-y-2">
+      <div className="h-16 bg-muted rounded" />
+      <div className="h-16 bg-muted rounded" />
+    </div>
+  </div>
+});
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { EditCourseModal } from '@/components/schedule/EditCourseModal';
 import { CourseDetailModal } from '@/components/schedule/CourseDetailModal';
@@ -110,6 +120,7 @@ export default function SchedulePage() {
   }, [selectedCourseId, schedule?.courses]);
 
   const [username, setUsername] = useState('');
+  const [showSecondary, setShowSecondary] = useState(false);
 
   // Fetch user info
   useEffect(() => {
@@ -122,6 +133,16 @@ export default function SchedulePage() {
       })
       .catch(console.error);
   }, []);
+
+  // 延迟加载次要组件 (任务列表等)
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => {
+        setShowSecondary(true);
+      }, 30); // 30ms 延迟，确保 Grid 先渲染
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
 
   const handleCourseClick = (course: Course, time?: CourseTime, overlapping?: { course: Course; time: CourseTime }[]) => {
     if (overlapping && overlapping.length > 0) {
@@ -391,7 +412,7 @@ export default function SchedulePage() {
           updatedAt: new Date(),
         } as Course;
       });
-  }, [tasks, schedule]);
+  }, [tasks, schedule, globalTimeTables]);
 
   // 将没有开始时间的作业/其他任务转换为截止时间线标记
   const deadlineMarkers = useMemo(() => {
@@ -803,7 +824,7 @@ export default function SchedulePage() {
           {/* 遮罩层 */}
           {isResizing && <div className="absolute inset-0 z-50 bg-transparent" />}
           <div className="w-full h-full flex flex-col">
-            <TaskPanel />
+            {showSecondary && <TaskPanel />}
           </div>
         </div>
 

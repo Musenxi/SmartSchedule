@@ -110,54 +110,34 @@ export function ScheduleManagerModal({
             return;
         }
 
-        const exportData = {
-            version: 1,
-            type: 'schedule',
-            data: {
-                name: schedule.name,
-                totalWeeks: schedule.totalWeeks,
-                periodsPerDay: 12, // Default or fetch if available
-                courses: schedule.courses.map(c => ({
-                    name: c.name,
-                    teacher: c.times[0]?.teacher || undefined,
-                    location: c.times[0]?.location || undefined,
-                    credits: c.credits,
-                    color: c.color,
-                    note: c.note,
-                    times: c.times.map(t => ({
-                        dayOfWeek: t.dayOfWeek,
-                        startPeriod: t.startPeriod,
-                        endPeriod: t.endPeriod,
-                        weekRange: t.weekRange,
-                        location: t.location,
-                        teacher: t.teacher,
-                        startTime: t.startTime,
-                        endTime: t.endTime
-                    }))
-                }))
-            }
-        };
+        try {
+            const res = await fetch(`/api/schedules/${schedule.id}/share`, { method: 'POST' });
+            if (!res.ok) throw new Error('Generate share code failed');
+            const { code, expiresAt } = await res.json();
 
-        const jsonStr = JSON.stringify(exportData);
-        // Base64 encode handling unicode
-        const base64Data = btoa(unescape(encodeURIComponent(jsonStr)));
-
-        const humanReadable = `[SmartSchedule 课表分享: ${schedule.name}]
+            const humanReadable = `[SmartSchedule 课表分享: ${schedule.name}]
 共包含 ${schedule.courses.length} 门课程`;
 
-        const exportText = `===SmartSchedule===
+            // Format time
+            const expireTime = format(new Date(expiresAt), 'HH:mm');
+
+            const exportText = `===SmartSchedule===
 ${humanReadable}
----DATA---
-${base64Data}
+分享码: ${code}
+(有效期至 ${expireTime})
+---CODE---
+${code}
 ===END===`;
 
-        try {
             await navigator.clipboard.writeText(exportText);
             setCopySuccess(true);
             setTimeout(() => setCopySuccess(false), 2000);
+
+            // Optional: Show alert or toast with the code for visual confirmation
+            // alert(`分享码已生成并复制到剪贴板: ${code}\n有效期30分钟`);
         } catch (e) {
-            console.error('Copy failed', e);
-            alert('复制失败');
+            console.error('Share failed', e);
+            alert('生成分享码失败');
         }
     };
 

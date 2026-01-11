@@ -50,6 +50,8 @@ model Schedule {
   enableAutoTimeTableSwitch Boolean     @default(false) // 是否启用时间表自动切换
   courses                   Course[]
   activeTimeTableId         String? // 当前使用的时间表ID
+  shareCode                 String?     @unique // 分享码 (10位)
+  shareCodeExpiresAt        DateTime?   // 分享码过期时间
   createdAt                 DateTime    @default(now())
   updatedAt                 DateTime    @updatedAt
 

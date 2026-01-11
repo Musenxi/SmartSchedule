@@ -4,9 +4,10 @@ import { useState, useEffect, Suspense } from 'react';
 import { AISmartUploader } from '@/components/upload/AISmartUploader';
 import { CSVUploader } from '@/components/upload/CSVUploader';
 import { BrowserGrabber } from '@/components/upload/BrowserGrabber';
+import { SharePasteUploader } from '@/components/upload/SharePasteUploader';
 import { CourseVerifier, RecognizedCourse } from '@/components/upload/CourseVerifier';
 import { AISettingsModal } from '@/components/settings/AISettingsModal';
-import { ArrowLeft, CheckCircle2, FileSpreadsheet, Globe, PencilLine, Sparkles, Plus, Calendar as CalendarIcon, ChevronRight } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, FileSpreadsheet, Globe, PencilLine, Sparkles, Plus, Calendar as CalendarIcon, ChevronRight, ClipboardPaste } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -54,7 +55,7 @@ function groupCourses(flatCourses: any[]): RecognizedCourse[] {
 }
 
 type Step = 'target' | 'config' | 'select' | 'upload' | 'verify' | 'success';
-type ImportMethod = 'pdf' | 'csv' | 'browser' | 'manual';
+type ImportMethod = 'pdf' | 'csv' | 'browser' | 'manual' | 'share';
 type ImportTarget = 'create' | 'add' | 'overwrite';
 
 function ImportPageContent() {
@@ -133,6 +134,25 @@ function ImportPageContent() {
     }, [importTarget, searchParams]);
 
     const handleUploadComplete = (data: any) => {
+        if (method === 'share') {
+            // Handle share data specifically
+            if (data.data) {
+                const meta = data.data;
+                // Auto-fill config
+                setNewScheduleName(meta.name || `导入的课表`);
+                if (meta.totalWeeks) setTotalWeeks(meta.totalWeeks);
+                if (meta.periodsPerDay) setPeriodsPerDay(meta.periodsPerDay);
+                if (meta.firstWeekStart) setStartDate(meta.firstWeekStart.split('T')[0]);
+                // For share, we use the fetched courses directly as they are already structured
+                setResult({
+                    courses: meta.courses || [],
+                    isShared: true
+                });
+                setStep('verify');
+            }
+            return;
+        }
+
         if (data.courses && data.courses.length > 0) {
             // Group flat courses into structured courses
             const grouped = groupCourses(data.courses);
@@ -255,12 +275,12 @@ function ImportPageContent() {
                             {step === 'target' && '您想如何导入课表？'}
                             {step === 'config' && '新建课表设置'}
                             {step === 'select' && '选择数据来源'}
-                            {step === 'upload' && (method === 'pdf' ? '上传 PDF 文件' : method === 'csv' ? '上传 CSV 文件' : '教务系统抓取')}
+                            {step === 'upload' && (method === 'pdf' ? '上传 PDF 文件' : method === 'csv' ? '上传 CSV 文件' : method === 'browser' ? '教务系统抓取' : '粘贴分享码')}
                             {step === 'verify' && '确认课程详情'}
                             {step === 'success' && '导入成功'}
                         </h1>
                         <p className="text-muted-foreground text-base max-w-lg mx-auto leading-relaxed">
-                            {step === 'target' && '您可以创建一张全新的课表，或者将课程添加到现有的课表中。'}
+                            {step === 'target' && '您可以创建新课表、导入他人分享的课表，或管理现有课表。'}
                             {step === 'config' && '请设置新课表的基本信息，以便正确计算周次和节次。'}
                             {step === 'select' && '我们支持多种导入方式，智能识别能帮您节省大量时间。'}
                             {step === 'upload' && '请按照指引完成操作，系统将自动处理数据。'}
@@ -271,41 +291,56 @@ function ImportPageContent() {
                     {/* Main Content Area */}
                     <div>
                         {step === 'target' && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
                                 <button
                                     onClick={() => setImportTarget('create')}
                                     className={cn(
-                                        "flex flex-col items-center p-6 rounded-xl border-2 transition-all duration-200 text-center gap-4 hover:scale-[1.02]",
-                                        importTarget === 'create'
-                                            ? "border-primary bg-primary/5 shadow-md"
-                                            : "border-border bg-card hover:border-primary/50"
+                                        "flex flex-col items-center p-6 rounded-2xl border-2 transition-all duration-200 text-center gap-4 hover:scale-[1.02] bg-card hover:border-primary/50 relative overflow-hidden group",
+                                        importTarget === 'create' ? "border-primary ring-1 ring-primary/20" : "border-border"
                                     )}
                                 >
                                     <div className={cn(
-                                        "p-3 rounded-full",
-                                        importTarget === 'create' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                                        "p-4 rounded-full transition-colors",
+                                        importTarget === 'create' ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground"
                                     )}>
-                                        <Plus className="w-6 h-6" />
+                                        <Plus className="w-8 h-8" />
                                     </div>
-                                    <div className="space-y-1">
-                                        <h3 className="font-semibold text-lg">创建新课表</h3>
+                                    <div className="space-y-2">
+                                        <h3 className="font-semibold text-xl">创建新课表</h3>
                                         <p className="text-sm text-muted-foreground">新建一张空白课表并导入课程</p>
                                     </div>
-                                    {importTarget === 'create' && <CheckCircle2 className="w-6 h-6 text-primary mt-2" />}
+                                    {importTarget === 'create' && <div className="absolute top-4 right-4"><CheckCircle2 className="w-6 h-6 text-primary" /></div>}
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        setImportTarget('create'); // Share import is technically a "create" action
+                                        setMethod('share');
+                                        setStep('upload');
+                                    }}
+                                    className={cn(
+                                        "flex flex-col items-center p-6 rounded-2xl border-2 transition-all duration-200 text-center gap-4 hover:scale-[1.02] bg-card hover:border-primary/50 relative overflow-hidden group border-border"
+                                    )}
+                                >
+                                    <div className="p-4 rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                        <ClipboardPaste className="w-8 h-8" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <h3 className="font-semibold text-xl">粘贴分享码</h3>
+                                        <p className="text-sm text-muted-foreground">导入他人分享的完整课表</p>
+                                    </div>
                                 </button>
 
                                 <button
                                     onClick={() => setImportTarget('add')}
                                     className={cn(
-                                        "flex flex-col items-center p-6 rounded-xl border-2 transition-all duration-200 text-center gap-4 hover:scale-[1.02]",
-                                        importTarget === 'add'
-                                            ? "border-primary bg-primary/5 shadow-md"
-                                            : "border-border bg-card hover:border-primary/50"
+                                        "flex flex-col items-center p-6 rounded-2xl border-2 transition-all duration-200 text-center gap-4 hover:scale-[1.02] bg-card hover:border-primary/50 relative overflow-hidden group",
+                                        importTarget === 'add' ? "border-primary ring-1 ring-primary/20" : "border-border"
                                     )}
                                 >
                                     <div className={cn(
-                                        "p-3 rounded-full",
-                                        importTarget === 'add' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                                        "p-3 rounded-full transition-colors",
+                                        importTarget === 'add' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/80 group-hover:text-primary-foreground"
                                     )}>
                                         <Plus className="w-6 h-6" />
                                     </div>
@@ -313,21 +348,19 @@ function ImportPageContent() {
                                         <h3 className="font-semibold text-lg">添加到现有</h3>
                                         <p className="text-sm text-muted-foreground">将课程追加到当前活动课表</p>
                                     </div>
-                                    {importTarget === 'add' && <CheckCircle2 className="w-6 h-6 text-primary mt-2" />}
+                                    {importTarget === 'add' && <div className="absolute top-3 right-3"><CheckCircle2 className="w-5 h-5 text-primary" /></div>}
                                 </button>
 
                                 <button
                                     onClick={() => setImportTarget('overwrite')}
                                     className={cn(
-                                        "flex flex-col items-center p-6 rounded-xl border-2 transition-all duration-200 text-center gap-4 hover:scale-[1.02]",
-                                        importTarget === 'overwrite'
-                                            ? "border-primary bg-primary/5 shadow-md"
-                                            : "border-border bg-card hover:border-primary/50"
+                                        "flex flex-col items-center p-6 rounded-2xl border-2 transition-all duration-200 text-center gap-4 hover:scale-[1.02] bg-card hover:border-primary/50 relative overflow-hidden group",
+                                        importTarget === 'overwrite' ? "border-primary ring-1 ring-primary/20" : "border-border"
                                     )}
                                 >
                                     <div className={cn(
-                                        "p-3 rounded-full",
-                                        importTarget === 'overwrite' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                                        "p-3 rounded-full transition-colors",
+                                        importTarget === 'overwrite' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/80 group-hover:text-primary-foreground"
                                     )}>
                                         <Sparkles className="w-6 h-6" />
                                     </div>
@@ -335,13 +368,13 @@ function ImportPageContent() {
                                         <h3 className="font-semibold text-lg">覆盖当前</h3>
                                         <p className="text-sm text-muted-foreground">清空当前课表并导入新课程</p>
                                     </div>
-                                    {importTarget === 'overwrite' && <CheckCircle2 className="w-6 h-6 text-primary mt-2" />}
+                                    {importTarget === 'overwrite' && <div className="absolute top-3 right-3"><CheckCircle2 className="w-5 h-5 text-primary" /></div>}
                                 </button>
 
-                                <div className="col-span-1 md:col-span-3 flex justify-center pt-6">
+                                <div className="col-span-1 md:col-span-2 lg:col-span-4 flex justify-center pt-8">
                                     <button
                                         onClick={handleTargetNext}
-                                        className="flex items-center gap-2 px-8 py-3 bg-primary text-primary-foreground rounded-full font-semibold shadow-lg hover:shadow-xl hover:bg-primary/90 transition-all hover:scale-105"
+                                        className="flex items-center gap-2 px-10 py-4 bg-primary text-primary-foreground rounded-full font-bold shadow-xl hover:shadow-2xl hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
                                     >
                                         下一步
                                         <ChevronRight className="w-5 h-5" />
@@ -508,6 +541,9 @@ function ImportPageContent() {
                                         </p>
                                     </div>
                                 </button>
+
+
+                                {/* Removed Share Code button from Step 3 as it's now in Step 1 */}
                             </div>
                         )}
 
@@ -516,6 +552,7 @@ function ImportPageContent() {
                                 {method === 'pdf' && <AISmartUploader onUploadComplete={handleUploadComplete} />}
                                 {method === 'csv' && <CSVUploader onUploadComplete={handleUploadComplete} />}
                                 {method === 'browser' && <BrowserGrabber onUploadComplete={handleUploadComplete} />}
+                                {method === 'share' && <SharePasteUploader onUploadComplete={handleUploadComplete} />}
 
                                 {result && result.courses?.length === 0 && method === 'pdf' && (
                                     <div className="mt-8 pt-6 border-t border-border space-y-4">
