@@ -307,7 +307,10 @@ export function TaskImportModal({ isOpen, onClose, onImported, existingTasks = [
                 onConfirm={() => processImport(parsedTasks)}
             />
             <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-                <h3 className="text-lg font-semibold">批量导入考试任务</h3>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Download className="w-5 h-5 text-primary" />
+                    批量导入考试任务
+                </h3>
                 <button onClick={onClose} className="p-1 text-muted-foreground hover:bg-muted rounded-full">
                     <X className="w-5 h-5" />
                 </button>
@@ -431,9 +434,9 @@ export function TaskImportModal({ isOpen, onClose, onImported, existingTasks = [
                                     <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-between gap-4 shrink-0 transition-all hover:bg-blue-100/50 dark:hover:bg-blue-900/30">
                                         <div className="flex gap-3 items-start">
                                             <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
-                                            <div className="text-xs space-y-1">
-                                                <p className="font-semibold text-sm">需要帮助？</p>
-                                                <p className="opacity-90">如果教务系统导出的文件无法自动识别，您可以下载标准模版，按格式填写后上传。</p>
+                                            <div className="text-sm space-y-1">
+                                                <p className="font-semibold">需要帮助？</p>
+                                                <p className="opacity-90 text-xs">如果教务系统导出的文件无法自动识别，您可以下载标准模版，按格式填写后上传。</p>
                                             </div>
                                         </div>
                                         <button
@@ -472,9 +475,9 @@ export function TaskImportModal({ isOpen, onClose, onImported, existingTasks = [
                                             识别内容
                                         </button>
                                     </div>
-                                    <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 p-3 rounded-lg text-sm flex items-start gap-2">
-                                        <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                                        您可以直接粘贴教务系统【考试信息查询】页面的完整 HTML 源码，或者复制导出的 TXT 内容。
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 p-3 rounded-lg text-sm flex items-center gap-2">
+                                        <AlertCircle className="w-4 h-4 shrink-0" />
+                                        <p>您可以直接粘贴教务系统【考试信息查询】页面的完整 HTML 源码，或者复制导出的 TXT 内容。</p>
                                     </div>
                                 </div>
                             )}
@@ -547,7 +550,7 @@ export function TaskImportModal({ isOpen, onClose, onImported, existingTasks = [
                                         )}
                                     </div>
 
-                                    <div className="mt-4 p-3 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg text-xs flex gap-2">
+                                    <div className="mt-4 p-3 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg text-sm flex items-center gap-2">
                                         <AlertCircle className="w-4 h-4 shrink-0" />
                                         <p>提示：AI 识别可能存在误差，请务必在识别后仔细核对考试时间、地点等信息。</p>
                                     </div>

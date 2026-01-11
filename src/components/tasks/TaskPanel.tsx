@@ -6,7 +6,7 @@ import { Task } from '@/types/task';
 import { TaskItem } from './TaskItem';
 import { CreateTaskModal } from './CreateTaskModal';
 import { TaskImportModal } from './TaskImportModal';
-import { Plus, ListTodo, ChevronDown, ChevronRight, CheckCircle2, Settings } from 'lucide-react';
+import { Plus, ListTodo, ChevronDown, ChevronRight, CheckCircle2, Settings, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isSameDay, isPast } from 'date-fns';
 import { useUIStore } from '@/stores/ui-store';
@@ -106,7 +106,7 @@ export function TaskPanel() {
                             className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
                             title="批量导入"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" x2="12" y1="3" y2="15" /></svg>
+                            <Download className="w-4 h-4" />
                         </button>
                         <button
                             onClick={() => {

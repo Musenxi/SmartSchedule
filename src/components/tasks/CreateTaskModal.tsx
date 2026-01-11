@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import { TaskType, TaskInput, Task } from '@/types/task';
-import { X, Calendar as CalendarIcon } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Download } from 'lucide-react';
 import { parseISO, format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -218,6 +218,7 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
                                         }}
                                         className="text-xs text-primary hover:underline flex items-center justify-end gap-1 w-full"
                                     >
+                                        <Download className="w-3 h-3" />
                                         想要批量导入？
                                     </button>
                                 </div>
