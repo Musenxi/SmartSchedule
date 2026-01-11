@@ -5,6 +5,7 @@ import { useRouter, usePathname, notFound } from 'next/navigation';
 import { LayoutDashboard, Users, Settings, LogOut, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Toaster } from 'sonner';
+import { useSession, signOut } from "next-auth/react";
 
 export default function AdminLayout({
     children,
@@ -13,56 +14,47 @@ export default function AdminLayout({
 }) {
     const router = useRouter();
     const pathname = usePathname();
-    const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const { data: session, status } = useSession();
     const [isNotFound, setIsNotFound] = useState(false);
+    const [domainChecking, setDomainChecking] = useState(true);
 
     useEffect(() => {
-        // Authenticate and check role
-        fetch('/api/auth/me')
-            .then(res => res.json())
-            .then(async (data) => {
-                if (!data.user || data.user.role !== 'ADMIN') {
-                    router.replace('/login');
-                    return;
-                }
+        if (status === 'loading') return;
 
-                // Check Admin Domain Restriction
-                try {
-                    const settingsRes = await fetch('/api/admin/system-settings');
-                    const settingsData = await settingsRes.json();
-                    const adminDomain = settingsData.settings?.['admin_domain'];
+        if (!session?.user || session.user.role !== 'ADMIN') {
+            router.replace('/login');
+            return;
+        }
 
-                    if (adminDomain) {
-                        const targetDomain = adminDomain.trim();
-                        const currentHost = window.location.host;
-                        const currentHostname = window.location.hostname;
+        // Check Admin Domain Restriction
+        const checkDomain = async () => {
+            // Only run check if we are authenticated as admin
+            try {
+                const settingsRes = await fetch('/api/admin/system-settings');
+                if (!settingsRes.ok) throw new Error('Failed to fetch settings');
 
-                        // Debugging logs
-                        console.log('Admin Domain Check:', {
-                            target: targetDomain,
-                            currentHost,
-                            currentHostname
-                        });
+                const settingsData = await settingsRes.json();
+                const adminDomain = settingsData.settings?.['admin_domain'];
 
-                        // Check if either host (with port) or hostname (without port) matches
-                        if (currentHost !== targetDomain && currentHostname !== targetDomain) {
-                            console.warn('Admin domain mismatch, showing 404...');
-                            setIsNotFound(true);
-                            return;
-                        }
+                if (adminDomain) {
+                    const targetDomain = adminDomain.trim();
+                    const currentHost = window.location.host;
+                    const currentHostname = window.location.hostname;
+
+                    if (currentHost !== targetDomain && currentHostname !== targetDomain) {
+                        setIsNotFound(true);
+                        return;
                     }
-                } catch (e) {
-                    console.error('Failed to check admin domain', e);
                 }
+            } catch (e) {
+                console.error('Failed to check admin domain', e);
+            } finally {
+                setDomainChecking(false);
+            }
+        };
 
-                setUser(data.user);
-                setLoading(false);
-            })
-            .catch(() => {
-                router.replace('/login');
-            });
-    }, [router]);
+        checkDomain();
+    }, [session, status, router]);
 
     if (isNotFound) {
         notFound();
@@ -74,13 +66,15 @@ export default function AdminLayout({
         { name: '全局设置', href: '/admin/settings', icon: Settings },
     ];
 
-    if (loading) {
+    if (status === 'loading' || domainChecking) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
                 <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
         );
     }
+
+    if (!session?.user) return null;
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex">
@@ -117,19 +111,15 @@ export default function AdminLayout({
                 <div className="p-4 border-t border-gray-200 dark:border-gray-800">
                     <div className="flex items-center gap-3 px-4 py-3 mb-2">
                         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                            {user?.name?.[0] || 'A'}
+                            {session.user.name?.[0] || 'A'}
                         </div>
                         <div className="flex-1 overflow-hidden">
-                            <div className="text-sm font-medium truncate">{user?.name}</div>
-                            <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
+                            <div className="text-sm font-medium truncate">{session.user.name}</div>
+                            <div className="text-xs text-muted-foreground truncate">{session.user.email}</div>
                         </div>
                     </div>
                     <button
-                        onClick={() => {
-                            fetch('/api/auth/logout', { method: 'POST' }).then(() => {
-                                window.location.href = '/login';
-                            });
-                        }}
+                        onClick={() => signOut({ callbackUrl: '/login' })}
                         className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
                     >
                         <LogOut className="w-5 h-5" />

@@ -1,6 +1,7 @@
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -9,32 +10,87 @@ datasource db {
 
 // 用户表
 model User {
-  id        String     @id @default(cuid())
-  email     String     @unique
-  password  String
-  name      String?
-  avatar    String?
-  schedules Schedule[]
-  tasks     Task[]
-  settings  Settings?
-  timeTables TimeTable[]
-  // 全局时间表设置
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?    // Optional for OAuth users
+  githubId      String?    @unique // Legacy field, migrating to Account
+  
+  accounts      Account[]
+  sessions      Session[]
+  
+  // App specific fields
+  avatar        String?
+  role          Role      @default(USER)
+  
+  schedules     Schedule[]
+  tasks         Task[]
+  settings      Settings?
+  timeTables    TimeTable[]
+  
+  // Global Schedule Settings
   defaultTimeTableId  String?
   autoSwitchEnabled   Boolean @default(false)
   winterTimeTableId   String?
-  winterStartDate     String?  // "MM-DD" 如 "10-01"
-  winterEndDate       String?  // "MM-DD" 如 "04-30"
+  winterStartDate     String?
+  winterEndDate       String?
   summerTimeTableId   String?
-  // AI 集成配置
-  aiProvider          String?  // 'gemini', 'openai', etc.
-  aiModel             String?  // e.g. 'gemini-3-flash-preview'
-  aiApiKey            String?  // Encrypted API key
-  aiEnabled           Boolean  @default(false)
-  role                Role     @default(USER) // 用户角色
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
 
+  // AI Config
+  aiProvider          String?
+  aiModel             String?
+  aiApiKey            String?
+  aiEnabled           Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+ 
   @@map("users")
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+ 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+ 
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  @@id([provider, providerAccountId])
+  @@map("accounts")
+}
+ 
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+ 
+  @@map("sessions")
+}
+ 
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+ 
+  @@id([identifier, token])
+  @@map("verification_tokens")
 }
 
 enum Role {

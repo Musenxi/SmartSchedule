@@ -1,31 +1,17 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'smartschedule-secret-key-2026';
+import { auth } from '@/auth';
 
 // Helper to verify admin
-async function verifyAdmin(request: NextRequest) {
-    const token = request.cookies.get('token')?.value;
-    if (!token) return null;
-
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-        const user = await prisma.user.findUnique({
-            where: { id: decoded.userId },
-            select: { role: true }
-        });
-
-        if (user?.role === 'ADMIN') return true;
-        return false;
-    } catch {
-        return false;
-    }
+async function verifyAdmin() {
+    const session = await auth();
+    if (session?.user?.role === 'ADMIN') return true;
+    return false;
 }
 
 export async function GET(request: NextRequest) {
-    if (!await verifyAdmin(request)) {
+    if (!await verifyAdmin()) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -51,7 +37,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-    if (!await verifyAdmin(request)) {
+    if (!await verifyAdmin()) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

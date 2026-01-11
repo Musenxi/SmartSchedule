@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, User, Mail, Lock, Loader2, Save, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { signOut } from "next-auth/react";
 
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
@@ -53,8 +54,8 @@ export default function ProfilePage() {
         try {
             const res = await fetch('/api/auth/me', { method: 'DELETE' });
             if (res.ok) {
-                setUser(null);
-                window.location.href = '/login';
+                // Sign out to clear client session
+                await signOut({ callbackUrl: '/login' });
             } else {
                 throw new Error('注销失败');
             }

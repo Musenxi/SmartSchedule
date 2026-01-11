@@ -1,26 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'smartschedule-secret-key-2026';
+import { auth } from '@/auth';
 
 export async function GET(request: NextRequest) {
     try {
-        const token = request.cookies.get('token')?.value;
+        const session = await auth();
 
-        if (!token) {
+        if (!session?.user?.id) {
             return NextResponse.json(
                 { error: '未登录' },
                 { status: 401 }
             );
         }
 
-        // 验证token
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
-
         // 获取用户信息
         const user = await prisma.user.findUnique({
-            where: { id: decoded.userId },
+            where: { id: session.user.id },
             select: {
                 id: true,
                 email: true,
@@ -38,7 +33,7 @@ export async function GET(request: NextRequest) {
         }
 
         return NextResponse.json({ user });
-    } catch {
+    } catch (e) {
         return NextResponse.json(
             { error: '未登录' },
             { status: 401 }
@@ -48,22 +43,21 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
     try {
-        const token = request.cookies.get('token')?.value;
+        const session = await auth();
 
-        if (!token) {
+        if (!session?.user?.id) {
             return NextResponse.json(
                 { error: '未登录' },
                 { status: 401 }
             );
         }
 
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
         const body = await request.json();
         const { name, email, currentPassword, newPassword } = body;
 
         // Verify user exists and get current password
         const user = await prisma.user.findUnique({
-            where: { id: decoded.userId }
+            where: { id: session.user.id }
         });
 
         if (!user) {
@@ -93,20 +87,28 @@ export async function PUT(request: NextRequest) {
 
         // Update password
         if (newPassword) {
-            if (!currentPassword) {
-                return NextResponse.json(
-                    { error: '修改密码需要提供当前密码' },
-                    { status: 400 }
-                );
-            }
-
-            // Verify current password
-            const isValid = await import('bcryptjs').then(m => m.compare(currentPassword, user.password));
-            if (!isValid) {
-                return NextResponse.json(
-                    { error: '当前密码错误' },
-                    { status: 400 }
-                );
+            if (!user.password) {
+                if (currentPassword) {
+                    return NextResponse.json(
+                        { error: 'OAuth 用户請直接设置密码' },
+                        { status: 400 }
+                    );
+                }
+            } else {
+                if (!currentPassword) {
+                    return NextResponse.json(
+                        { error: '修改密码需要提供当前密码' },
+                        { status: 400 }
+                    );
+                }
+                // Verify current password
+                const isValid = await import('bcryptjs').then(m => m.compare(currentPassword, user.password!));
+                if (!isValid) {
+                    return NextResponse.json(
+                        { error: '当前密码错误' },
+                        { status: 400 }
+                    );
+                }
             }
 
             const hashedPassword = await import('bcryptjs').then(m => m.hash(newPassword, 12));
@@ -139,31 +141,23 @@ export async function PUT(request: NextRequest) {
 // Delete account handler
 export async function DELETE(request: NextRequest) {
     try {
-        const token = request.cookies.get('token')?.value;
+        const session = await auth();
 
-        if (!token) {
+        if (!session?.user?.id) {
             return NextResponse.json(
                 { error: '未登录' },
                 { status: 401 }
             );
         }
 
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-
-        // Delete the user
-        // Prisma cascade delete is configured in schema, so this removes related data
         await prisma.user.delete({
-            where: { id: decoded.userId }
+            where: { id: session.user.id }
         });
+
+        const cookieName = process.env.NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
 
         const response = NextResponse.json({ success: true });
-
-        // Clear the token cookie
-        response.cookies.set('token', '', {
-            httpOnly: true,
-            expires: new Date(0),
-            path: '/'
-        });
+        response.cookies.set(cookieName, '', { maxAge: 0 });
 
         return response;
 
