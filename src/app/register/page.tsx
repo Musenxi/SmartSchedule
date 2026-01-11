@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from "next-auth/react"
+import TurnstileWidget from '@/components/auth/turnstile-widget';
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -11,8 +12,60 @@ export default function RegisterPage() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [name, setName] = useState('');
+    const [code, setCode] = useState('');
+    const [countdown, setCountdown] = useState(0);
+    const [turnstileToken, setTurnstileToken] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [sendingCode, setSendingCode] = useState(false);
+    const [emailVerificationEnabled, setEmailVerificationEnabled] = useState(false);
+
+    useEffect(() => {
+        // Fetch Auth Config
+        fetch('/api/auth/config')
+            .then(res => res.json())
+            .then(data => {
+                if (data.emailVerification) {
+                    setEmailVerificationEnabled(true);
+                }
+            })
+            .catch(console.error);
+
+        let timer: NodeJS.Timeout;
+        if (countdown > 0) {
+            timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+        }
+        return () => clearTimeout(timer);
+    }, [countdown]);
+
+    const handleSendCode = async () => {
+        if (!email) {
+            setError('请先填写邮箱地址');
+            return;
+        }
+        setError('');
+        setSendingCode(true);
+
+        try {
+            const res = await fetch('/api/auth/send-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, type: 'register' }),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error || '发送失败');
+            } else {
+                setCountdown(60);
+                import('sonner').then(({ toast }) => toast.success('验证码已发送，请查收邮件'));
+            }
+        } catch (e) {
+            setError('发送失败，请稍后重试');
+        } finally {
+            setSendingCode(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -34,7 +87,13 @@ export default function RegisterPage() {
             const res = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, name: name || undefined }),
+                body: JSON.stringify({
+                    email,
+                    password,
+                    name: name || undefined,
+                    turnstileToken,
+                    code: emailVerificationEnabled ? code : undefined
+                }),
             });
 
             const data = await res.json();
@@ -145,6 +204,40 @@ export default function RegisterPage() {
                         />
                     </div>
 
+                    {emailVerificationEnabled && (
+                        <div className="space-y-1">
+                            <label htmlFor="code" className="block text-sm font-medium text-foreground">
+                                验证码
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    id="code"
+                                    type="text"
+                                    value={code}
+                                    onChange={(e) => setCode(e.target.value)}
+                                    className="flex-1 px-4 py-3 bg-background border border-input rounded-xl focus:ring-2 focus:ring-ring focus:border-input transition-all outline-none text-foreground placeholder:text-muted-foreground"
+                                    placeholder="6位验证码"
+                                    maxLength={6}
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleSendCode}
+                                    disabled={countdown > 0 || sendingCode || !email}
+                                    className="px-4 py-3 bg-secondary text-secondary-foreground font-medium rounded-xl hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap min-w-[100px]"
+                                >
+                                    {sendingCode ? (
+                                        <span className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
+                                    ) : countdown > 0 ? (
+                                        `${countdown}s`
+                                    ) : (
+                                        '获取验证码'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <div>
                         <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
                             密码
@@ -174,6 +267,8 @@ export default function RegisterPage() {
                             required
                         />
                     </div>
+
+                    <TurnstileWidget onVerify={(token) => setTurnstileToken(token)} />
 
                     <button
                         type="submit"

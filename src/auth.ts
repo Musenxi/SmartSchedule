@@ -5,6 +5,7 @@ import GitHub from "next-auth/providers/github"
 import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { authConfig } from "./auth.config"
+import { verifyTurnstileToken } from "@/lib/turnstile"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig,
@@ -18,10 +19,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: "Credentials",
             credentials: {
                 email: { label: "Email", type: "email" },
-                password: { label: "Password", type: "password" }
+                password: { label: "Password", type: "password" },
+                turnstileToken: { label: "Turnstile Token", type: "text" }
             },
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.password) return null;
+
+                // Verify Turnstile
+                const isHuman = await verifyTurnstileToken(credentials.turnstileToken as string || '');
+                if (!isHuman) {
+                    throw new Error("TurnstileVerificationFailed");
+                }
 
                 const user = await prisma.user.findUnique({
                     where: { email: credentials.email as string }

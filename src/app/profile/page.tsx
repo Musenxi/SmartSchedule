@@ -24,6 +24,59 @@ export default function ProfilePage() {
     // UI States
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [emailVerificationEnabled, setEmailVerificationEnabled] = useState(false);
+    const [code, setCode] = useState('');
+    const [countdown, setCountdown] = useState(0);
+    const [sendingCode, setSendingCode] = useState(false);
+
+    useEffect(() => {
+        // Fetch Auth Config
+        fetch('/api/auth/config')
+            .then(res => res.json())
+            .then(data => {
+                if (data.emailVerification) {
+                    setEmailVerificationEnabled(true);
+                }
+            })
+            .catch(console.error);
+    }, []);
+
+    useEffect(() => {
+        let timer: NodeJS.Timeout;
+        if (countdown > 0) {
+            timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+        }
+        return () => clearTimeout(timer);
+    }, [countdown]);
+
+    const handleSendCode = async () => {
+        if (!email) {
+            setMessage({ type: 'error', text: '请先填写邮箱地址' });
+            return;
+        }
+        setMessage(null);
+        setSendingCode(true);
+
+        try {
+            const res = await fetch('/api/auth/send-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, type: 'update-email' }),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                setMessage({ type: 'error', text: data.error || '发送失败' });
+            } else {
+                setCountdown(60);
+                import('sonner').then(({ toast }) => toast.success('验证码已发送，请查收邮件'));
+            }
+        } catch (e) {
+            setMessage({ type: 'error', text: '发送失败，请稍后重试' });
+        } finally {
+            setSendingCode(false);
+        }
+    };
 
     // Confirm Dialog State
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -77,6 +130,7 @@ export default function ProfilePage() {
             if (activeTab === 'general') {
                 body.name = name;
                 body.email = email;
+                body.code = code;
             } else if (activeTab === 'security') {
                 if (newPassword !== confirmPassword) {
                     throw new Error('两次输入的新密码不一致');
@@ -276,6 +330,37 @@ export default function ProfilePage() {
                                                     更改邮箱后，下次登录请使用新邮箱
                                                 </p>
                                             </div>
+
+                                            {emailVerificationEnabled && user?.email !== email && (
+                                                <div className="space-y-2 animate-in slide-in-from-top-2">
+                                                    <label className="text-sm font-medium text-muted-foreground">验证码</label>
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={code}
+                                                            onChange={e => setCode(e.target.value)}
+                                                            className="flex-1 px-4 py-2.5 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                                            placeholder="6位验证码"
+                                                            maxLength={6}
+                                                            required
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleSendCode}
+                                                            disabled={countdown > 0 || sendingCode || !email}
+                                                            className="px-4 py-2 bg-secondary text-secondary-foreground font-medium rounded-xl hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap min-w-[100px]"
+                                                        >
+                                                            {sendingCode ? (
+                                                                <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                                                            ) : countdown > 0 ? (
+                                                                `${countdown}s`
+                                                            ) : (
+                                                                '获取验证码'
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </>
                                     )}
 

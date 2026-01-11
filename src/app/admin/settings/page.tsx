@@ -1,12 +1,41 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Save, Loader2, Globe } from 'lucide-react';
+import { Settings, Save, Loader2, Globe, ShieldCheck, Mail } from 'lucide-react';
 
 export default function AdminSettingsPage() {
     const [settings, setSettings] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [testing, setTesting] = useState(false);
+
+    const handleTestEmail = async (to: string) => {
+        if (!to) {
+            import('sonner').then(({ toast }) => toast.error('请输入收件人地址'));
+            return;
+        }
+
+        setTesting(true);
+        try {
+            const res = await fetch('/api/admin/settings/test-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to }),
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                import('sonner').then(({ toast }) => toast.success('测试邮件已发送，请查收'));
+            } else {
+                import('sonner').then(({ toast }) => toast.error(data.error || '发送失败'));
+            }
+        } catch (e) {
+            import('sonner').then(({ toast }) => toast.error('网络错误'));
+        } finally {
+            setTesting(false);
+        }
+    };
+
 
     useEffect(() => {
         fetch('/api/admin/system-settings')
@@ -176,11 +205,197 @@ export default function AdminSettingsPage() {
                                 </div>
                             </div>
                         </div>
+
+                        <div className="border-t border-gray-100 dark:border-gray-800 my-4" />
+
+                        {/* Turnstile Settings */}
+                        <div className="space-y-4">
+                            <h4 className="font-medium flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-primary" />
+                                安全配置 (Turnstile)
+                            </h4>
+
+                            <div className="bg-muted/30 rounded-xl p-4 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="font-medium text-sm">启用 Cloudflare Turnstile</div>
+                                        <div className="text-xs text-muted-foreground">在注册和登录页面启用人机验证</div>
+                                    </div>
+                                    <div
+                                        className={`h-6 w-11 rounded-full relative cursor-pointer transition-colors ${settings['turnstile_enabled'] === 'true' ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}
+                                        onClick={() => handleSave('turnstile_enabled', settings['turnstile_enabled'] === 'true' ? 'false' : 'true')}
+                                    >
+                                        <div className={`absolute top-1 h-4 w-4 bg-white rounded-full shadow-sm transition-all ${settings['turnstile_enabled'] === 'true' ? 'right-1' : 'left-1'}`} />
+                                    </div>
+                                </div>
+
+                                {settings['turnstile_enabled'] === 'true' && (
+                                    <div className="grid gap-4 pt-2 animate-in slide-in-from-top-2 fade-in duration-300">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Site Key</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    className="flex-1 px-4 py-2 bg-background border border-input rounded-xl focus:ring-2 focus:ring-primary/20 outline-none"
+                                                    value={settings['turnstile_site_key'] || ''}
+                                                    onChange={(e) => setSettings(prev => ({ ...prev, 'turnstile_site_key': e.target.value }))}
+                                                    placeholder="0x4AAAAAA..."
+                                                />
+                                                <button
+                                                    onClick={() => handleSave('turnstile_site_key', settings['turnstile_site_key'] || '')}
+                                                    disabled={saving}
+                                                    className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                                                >
+                                                    保存
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Secret Key</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="password"
+                                                    className="flex-1 px-4 py-2 bg-background border border-input rounded-xl focus:ring-2 focus:ring-primary/20 outline-none"
+                                                    value={settings['turnstile_secret_key'] || ''}
+                                                    onChange={(e) => setSettings(prev => ({ ...prev, 'turnstile_secret_key': e.target.value }))}
+                                                    placeholder="0x4AAAAAA..."
+                                                />
+                                                <button
+                                                    onClick={() => handleSave('turnstile_secret_key', settings['turnstile_secret_key'] || '')}
+                                                    disabled={saving}
+                                                    className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                                                >
+                                                    保存
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
-                        <div className="bg-yellow-50 dark:bg-yellow-900/10 text-yellow-600 dark:text-yellow-500 p-4 rounded-xl text-sm">
-                            更多全局设置（SMTP、AI配置等）正在开发中...
+                    <div className="border-t border-gray-100 dark:border-gray-800 my-4" />
+
+                    {/* SMTP Settings */}
+                    <div className="space-y-4">
+                        <h4 className="font-medium flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-primary" />
+                            邮件服务配置 (SMTP)
+                        </h4>
+
+                        <div className="bg-muted/30 rounded-xl p-4 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="font-medium text-sm">启用邮件验证服务</div>
+                                    <div className="text-xs text-muted-foreground">在注册和修改邮箱时发送 6 位验证码</div>
+                                </div>
+                                <div
+                                    className={`h-6 w-11 rounded-full relative cursor-pointer transition-colors ${settings['smtp_enabled'] === 'true' ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}
+                                    onClick={() => handleSave('smtp_enabled', settings['smtp_enabled'] === 'true' ? 'false' : 'true')}
+                                >
+                                    <div className={`absolute top-1 h-4 w-4 bg-white rounded-full shadow-sm transition-all ${settings['smtp_enabled'] === 'true' ? 'right-1' : 'left-1'}`} />
+                                </div>
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-4 pt-2">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">SMTP 服务器</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-2 bg-background border border-input rounded-xl focus:ring-2 focus:ring-primary/20 outline-none"
+                                        value={settings['smtp_host'] || ''}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, 'smtp_host': e.target.value }))}
+                                        onBlur={(e) => handleSave('smtp_host', e.target.value)}
+                                        placeholder="smtp.example.com"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">端口</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            className="flex-1 px-4 py-2 bg-background border border-input rounded-xl focus:ring-2 focus:ring-primary/20 outline-none"
+                                            value={settings['smtp_port'] || '465'}
+                                            onChange={(e) => setSettings(prev => ({ ...prev, 'smtp_port': e.target.value }))}
+                                            onBlur={(e) => handleSave('smtp_port', e.target.value)}
+                                            placeholder="465"
+                                        />
+                                        <div className="flex items-center gap-2 bg-background border border-input px-3 rounded-xl">
+                                            <input
+                                                type="checkbox"
+                                                id="smtp_secure"
+                                                checked={settings['smtp_secure'] === 'true'}
+                                                onChange={(e) => {
+                                                    const val = e.target.checked ? 'true' : 'false';
+                                                    setSettings(prev => ({ ...prev, 'smtp_secure': val }));
+                                                    handleSave('smtp_secure', val);
+                                                }}
+                                                className="w-4 h-4 text-primary rounded focus:ring-primary/20"
+                                            />
+                                            <label htmlFor="smtp_secure" className="text-sm cursor-pointer whitespace-nowrap">SSL</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">账号</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-2 bg-background border border-input rounded-xl focus:ring-2 focus:ring-primary/20 outline-none"
+                                        value={settings['smtp_user'] || ''}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, 'smtp_user': e.target.value }))}
+                                        onBlur={(e) => handleSave('smtp_user', e.target.value)}
+                                        placeholder="user@example.com"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">密码 / 授权码</label>
+                                    <input
+                                        type="password"
+                                        className="w-full px-4 py-2 bg-background border border-input rounded-xl focus:ring-2 focus:ring-primary/20 outline-none"
+                                        value={settings['smtp_password'] || ''}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, 'smtp_password': e.target.value }))}
+                                        onBlur={(e) => handleSave('smtp_password', e.target.value)}
+                                        placeholder="••••••••"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">发件人地址</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-2 bg-background border border-input rounded-xl focus:ring-2 focus:ring-primary/20 outline-none mb-2"
+                                    value={settings['smtp_from'] || ''}
+                                    onChange={(e) => setSettings(prev => ({ ...prev, 'smtp_from': e.target.value }))}
+                                    onBlur={(e) => handleSave('smtp_from', e.target.value)}
+                                    placeholder="noreply@example.com"
+                                />
+                            </div>
+
+                            <div className="space-y-2 pt-2 border-t border-border/50">
+                                <label className="text-sm font-medium">SMTP 测试</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        className="flex-1 px-4 py-2 bg-background border border-input rounded-xl focus:ring-2 focus:ring-primary/20 outline-none"
+                                        placeholder="收件人邮箱"
+                                        value={settings['test_recipient'] || ''}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, 'test_recipient': e.target.value }))}
+                                    />
+                                    <button
+                                        className="px-4 py-2 bg-secondary text-secondary-foreground rounded-xl text-sm font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50 min-w-[100px]"
+                                        onClick={() => handleTestEmail(settings['test_recipient'] || '')}
+                                        disabled={testing}
+                                    >
+                                        {testing ? '发送中...' : '发送测试'}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

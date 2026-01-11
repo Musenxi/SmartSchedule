@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
+import { isSMTPConfigured } from '@/lib/mail';
 
 export async function GET(request: NextRequest) {
     try {
@@ -53,7 +54,7 @@ export async function PUT(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { name, email, currentPassword, newPassword } = body;
+        const { name, email, currentPassword, newPassword, code } = body;
 
         // Verify user exists and get current password
         const user = await prisma.user.findUnique({
@@ -71,7 +72,7 @@ export async function PUT(request: NextRequest) {
 
         // Update basic info
         if (name) updateData.name = name;
-        if (email) {
+        if (email && email !== user.email) {
             // Check if email is already taken by another user
             const existingUser = await prisma.user.findUnique({
                 where: { email }
@@ -82,6 +83,42 @@ export async function PUT(request: NextRequest) {
                     { status: 400 }
                 );
             }
+
+            // Verify Email Code if SMTP is configured
+            const emailEnabled = await isSMTPConfigured();
+            if (emailEnabled) {
+                if (!code || code.length !== 6) {
+                    return NextResponse.json(
+                        { error: '请输入6位验证码以确认更改邮箱' },
+                        { status: 400 }
+                    );
+                }
+
+                const tokenRecord = await prisma.verificationToken.findFirst({
+                    where: {
+                        identifier: email,
+                        token: code,
+                        expires: { gt: new Date() }
+                    }
+                });
+
+                if (!tokenRecord) {
+                    return NextResponse.json(
+                        { error: '验证码无效或已过期' },
+                        { status: 400 }
+                    );
+                }
+
+                // Delete used token
+                await prisma.verificationToken.deleteMany({
+                    where: { identifier: email }
+                });
+
+                updateData.emailVerified = new Date();
+            } else {
+                updateData.emailVerified = null;
+            }
+
             updateData.email = email;
         }
 

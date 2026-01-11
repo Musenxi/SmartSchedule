@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from "next-auth/react"
+import TurnstileWidget from '@/components/auth/turnstile-widget';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -39,6 +41,7 @@ export default function LoginPage() {
       const result = await signIn("credentials", {
         email,
         password,
+        turnstileToken,
         redirect: false,
       })
 
@@ -134,6 +137,8 @@ export default function LoginPage() {
             />
           </div>
 
+          <TurnstileWidget onVerify={(token) => setTurnstileToken(token)} />
+
           <button
             type="submit"
             disabled={loading}
@@ -149,6 +154,8 @@ export default function LoginPage() {
               </span>
             ) : '登录'}
           </button>
+
+
 
           <div className="text-center text-sm text-muted-foreground">
             还没有账号？

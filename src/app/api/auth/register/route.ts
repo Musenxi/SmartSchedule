@@ -3,19 +3,62 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
+import { verifyTurnstileToken } from '@/lib/turnstile';
+import { isSMTPConfigured } from '@/lib/mail';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'smartschedule-secret-key-2026';
-
 const registerSchema = z.object({
     email: z.string().email('请输入有效的邮箱地址'),
     password: z.string().min(6, '密码至少6个字符'),
     name: z.string().min(1, '请输入用户名').optional(),
+    turnstileToken: z.string().optional(),
+    code: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { email, password, name } = registerSchema.parse(body);
+        const { email, password, name, turnstileToken, code } = registerSchema.parse(body);
+
+        // Verify Turnstile
+        const isHuman = await verifyTurnstileToken(turnstileToken || '');
+        if (!isHuman) {
+            return NextResponse.json(
+                { error: '人机验证失败，请刷新页面重试' },
+                { status: 400 }
+            );
+        }
+
+        // Verify Email Code if SMTP is configured
+        const emailEnabled = await isSMTPConfigured();
+        if (emailEnabled) {
+            if (!code || code.length !== 6) {
+                return NextResponse.json(
+                    { error: '请输入6位验证码' },
+                    { status: 400 }
+                );
+            }
+
+            const tokenRecord = await prisma.verificationToken.findFirst({
+                where: {
+                    identifier: email,
+                    token: code,
+                    expires: { gt: new Date() }
+                }
+            });
+
+            if (!tokenRecord) {
+                return NextResponse.json(
+                    { error: '验证码无效或已过期' },
+                    { status: 400 }
+                );
+            }
+
+            // Delete used token
+            await prisma.verificationToken.deleteMany({
+                where: { identifier: email }
+            });
+        }
 
         // 检查邮箱是否已存在
         const existingUser = await prisma.user.findUnique({
@@ -38,6 +81,7 @@ export async function POST(request: NextRequest) {
                 email,
                 password: hashedPassword,
                 name: name || email.split('@')[0],
+                emailVerified: emailEnabled ? new Date() : null,
             }
         });
 
