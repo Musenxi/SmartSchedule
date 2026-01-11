@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSettings } from '@/hooks/use-settings';
-import { X, LogOut, Clock, ChevronRight, LayoutTemplate, Calendar, Sparkles } from 'lucide-react';
+import { X, LogOut, Clock, ChevronRight, LayoutTemplate, Calendar, Sparkles, User } from 'lucide-react';
 import { Schedule, TimeTable } from '@/types';
 import { TimeTableListModal } from '../schedule/TimeTableListModal';
 import { AppearanceSettingsModal } from './AppearanceSettingsModal';
@@ -178,6 +178,23 @@ export function SettingsPanel({
                     <h3 className="text-lg font-medium text-foreground/80 pb-2 border-b border-border">
                         账户
                     </h3>
+                    <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => {
+                        window.location.href = '/profile';
+                    }}>
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-lg text-blue-600 dark:text-blue-400">
+                                <User className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="font-medium">个人资料</div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                    修改用户相关信息
+                                </div>
+                            </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    </div>
+
                     <div className="flex items-center justify-between p-3 bg-destructive/10 rounded-xl cursor-pointer hover:bg-destructive/20 transition-colors" onClick={() => {
                         // 处理退出逻辑
                         fetch('/api/auth/logout', { method: 'POST' }).then(() => {
