@@ -135,3 +135,43 @@ export async function PUT(request: NextRequest) {
         );
     }
 }
+
+// Delete account handler
+export async function DELETE(request: NextRequest) {
+    try {
+        const token = request.cookies.get('token')?.value;
+
+        if (!token) {
+            return NextResponse.json(
+                { error: '未登录' },
+                { status: 401 }
+            );
+        }
+
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+
+        // Delete the user
+        // Prisma cascade delete is configured in schema, so this removes related data
+        await prisma.user.delete({
+            where: { id: decoded.userId }
+        });
+
+        const response = NextResponse.json({ success: true });
+
+        // Clear the token cookie
+        response.cookies.set('token', '', {
+            httpOnly: true,
+            expires: new Date(0),
+            path: '/'
+        });
+
+        return response;
+
+    } catch (error) {
+        console.error('Delete account failed:', error);
+        return NextResponse.json(
+            { error: '注销失败' },
+            { status: 500 }
+        );
+    }
+}
