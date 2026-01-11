@@ -82,11 +82,10 @@ export function parseAcademicHTML(html: string): RecognizedCourse[] {
                         // Parse Week Range (heuristic)
                         const weekMatch = timeText.match(/\)(.+)$/);
                         if (weekMatch) {
-                            weekRange = weekMatch[1].trim();
+                            weekRange = weekMatch[1].replace(/周/g, '').trim();
                         } else {
                             // Fallback: Remove the section part (e.g. (1-2节)) and trim
-                            // Do NOT aggressively remove '周' globaly as it destroys context for comma-separated lists
-                            weekRange = timeText.replace(/[\(\)0-9\-]+节/, '').trim();
+                            weekRange = timeText.replace(/[\(\)0-9\-]+节/, '').replace(/周/g, '').trim();
                         }
                     }
                 });
