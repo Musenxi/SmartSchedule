@@ -21,6 +21,7 @@ import { getDay, getHours, getMinutes, parseISO, addWeeks, format } from 'date-f
 import { ScheduleManagerModal } from '@/components/schedule/ScheduleManagerModal';
 import { ScheduleListModal } from '@/components/schedule/ScheduleListModal';
 import { CourseConflictModal } from '@/components/schedule/CourseConflictModal';
+import { AddCourseModal } from '@/components/schedule/AddCourseModal';
 
 interface ScheduleData extends Schedule {
   courses: Course[];
@@ -91,6 +92,16 @@ export default function SchedulePage() {
   // 冲突课程处理
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
   const [conflictItems, setConflictItems] = useState<{ course: Course; time: CourseTime }[]>([]);
+
+  // 添加课程弹窗
+  const [isAddCourseModalOpen, setIsAddCourseModalOpen] = useState(false);
+  const [addCourseInitialSlot, setAddCourseInitialSlot] = useState<{
+    dayOfWeek: number;
+    startPeriod: number;
+    endPeriod: number;
+    weekRange: string;
+    specificDate?: string;
+  } | undefined>(undefined);
 
   // Derive selectedCourse from schedule.courses for fresh data
   const selectedCourse = useMemo(() => {
@@ -170,6 +181,26 @@ export default function SchedulePage() {
   const handleCloseDetailModal = () => {
     setIsCourseDetailOpen(false);
     setSelectedCourseId(null);
+    setSelectedTimeIndex(0);
+  };
+
+  // Handle empty cell selection from WeekView
+  const handleEmptyCellSelect = (day: number, startPeriod: number, endPeriod: number) => {
+    // Calculate the specific date for this selection
+    const firstWeekStart = new Date(schedule!.firstWeekStart);
+    // firstWeekStart is Monday of week 1, add (currentWeek - 1) weeks and (day - 1) days
+    const specificDate = new Date(firstWeekStart);
+    specificDate.setDate(specificDate.getDate() + (currentWeek - 1) * 7 + (day - 1));
+    const dateString = format(specificDate, 'yyyy-MM-dd');
+
+    setAddCourseInitialSlot({
+      dayOfWeek: day,
+      startPeriod,
+      endPeriod,
+      weekRange: `${currentWeek}`,
+      specificDate: dateString,
+    });
+    setIsAddCourseModalOpen(true);
   };
 
   // 处理拖拽
@@ -728,6 +759,7 @@ export default function SchedulePage() {
               onSwipeLeft={() => setCurrentWeek(w => Math.min(schedule.totalWeeks, w + 1))}
               onSwipeRight={() => setCurrentWeek(w => Math.max(1, w - 1))}
               deadlines={deadlineMarkers}
+              onEmptyCellSelect={handleEmptyCellSelect}
             />
           </div>
         </div>
@@ -904,6 +936,19 @@ export default function SchedulePage() {
         onClose={() => setIsConflictModalOpen(false)}
         items={conflictItems}
         onSelect={(course, time) => handleCourseClick(course, time)}
+      />
+
+      <AddCourseModal
+        isOpen={isAddCourseModalOpen}
+        onClose={() => {
+          setIsAddCourseModalOpen(false);
+          setAddCourseInitialSlot(undefined);
+        }}
+        scheduleId={schedule.id}
+        totalWeeks={schedule.totalWeeks}
+        startDate={schedule.firstWeekStart instanceof Date ? schedule.firstWeekStart.toISOString() : String(schedule.firstWeekStart)}
+        onSuccess={() => fetchSchedule(true)}
+        initialTimeSlot={addCourseInitialSlot}
       />
     </div>
   );

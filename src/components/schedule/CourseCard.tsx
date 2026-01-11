@@ -37,6 +37,7 @@ export function CourseCard({
             height: (time.endPeriod - time.startPeriod + 1) * periodHeight - 4,
             backgroundColor: `${course.color}${opacity}`,
             borderRadius: cornerRadius,
+            zIndex: isCurrentWeek ? 5 : 1, // 本周课程显示在最上层
         };
     }, [time, periodHeight, course.color, isCurrentWeek, cornerRadius]);
 

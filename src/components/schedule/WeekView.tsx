@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState, useCallback } from 'react';
 import { TimeGrid } from './TimeGrid';
 import { WeekHeader } from './WeekHeader';
 import { CourseCard } from './CourseCard';
 import { getWeekDates, isWeekInRange, isCourseFinished } from '@/lib/date-utils';
 import { Course, Period, CourseTime } from '@/types';
 import { cn } from '@/lib/utils';
+import { Plus } from 'lucide-react';
 
 export interface DeadlineMarker {
     id: string;
@@ -16,6 +17,12 @@ export interface DeadlineMarker {
     fraction: number; // 0 to 1, position within grid
     dueDate: Date;
     type: string;
+}
+
+interface Selection {
+    day: number;
+    startPeriod: number;
+    endPeriod: number;
 }
 
 interface WeekViewProps {
@@ -37,6 +44,8 @@ interface WeekViewProps {
     onSwipeRight?: () => void;
     // 截止时间线
     deadlines?: DeadlineMarker[];
+    // 空白格点击添加
+    onEmptyCellSelect?: (day: number, startPeriod: number, endPeriod: number) => void;
 }
 
 export function WeekView({
@@ -55,7 +64,12 @@ export function WeekView({
     onSwipeLeft,
     onSwipeRight,
     deadlines = [],
+    onEmptyCellSelect,
 }: WeekViewProps) {
+    // Selection state for empty cell click
+    const [selection, setSelection] = useState<Selection | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStartPeriod = useRef<number | null>(null);
     // 计算当前周的日期
     const weekDates = useMemo(() =>
         getWeekDates(firstWeekStart, currentWeek),
@@ -188,6 +202,73 @@ export function WeekView({
         }
     };
 
+    // Helper: calculate period from Y position relative to grid
+    const getPeriodFromY = useCallback((clientY: number, gridElement: HTMLElement) => {
+        const rect = gridElement.getBoundingClientRect();
+        const y = clientY - rect.top;
+        const period = Math.floor(y / periodHeight) + 1;
+        return Math.max(1, Math.min(periods.length, period));
+    }, [periodHeight, periods.length]);
+
+    // Grid cell selection handlers
+    const handleGridMouseDown = useCallback((e: React.MouseEvent, day: number, gridElement: HTMLElement) => {
+        // Ignore if clicking on a course card
+        if ((e.target as HTMLElement).closest('[data-course-card]')) return;
+
+        // If clicking on the selection overlay, let its click handler handle it
+        if ((e.target as HTMLElement).closest('[data-selection-overlay]')) {
+            return;
+        }
+
+        const period = getPeriodFromY(e.clientY, gridElement);
+
+        // If there's already a selection, clicking elsewhere clears it
+        if (selection) {
+            setSelection(null);
+            return;
+        }
+
+        // Check if this period overlaps with any existing course on this day
+        const dayCourses = coursesByDay[day] || [];
+        const hasOverlap = dayCourses.some(({ time }) =>
+            period >= time.startPeriod && period <= time.endPeriod
+        );
+        if (hasOverlap) return;
+
+        setSelection({ day, startPeriod: period, endPeriod: period });
+        setIsDragging(true);
+        dragStartPeriod.current = period;
+        e.preventDefault();
+    }, [getPeriodFromY, selection, coursesByDay]);
+
+    const handleGridMouseMove = useCallback((e: React.MouseEvent, day: number, gridElement: HTMLElement) => {
+        if (!isDragging || !selection || selection.day !== day) return;
+
+        const period = getPeriodFromY(e.clientY, gridElement);
+        const start = Math.min(dragStartPeriod.current!, period);
+        const end = Math.max(dragStartPeriod.current!, period);
+        setSelection({ day, startPeriod: start, endPeriod: end });
+    }, [isDragging, selection, getPeriodFromY]);
+
+    const handleGridMouseUp = useCallback(() => {
+        setIsDragging(false);
+    }, []);
+
+    // Clear selection when clicking outside
+    const handleClearSelection = useCallback(() => {
+        if (!isDragging) {
+            setSelection(null);
+        }
+    }, [isDragging]);
+
+    // Handle add button click
+    const handleAddClick = useCallback(() => {
+        if (selection && onEmptyCellSelect) {
+            onEmptyCellSelect(selection.day, selection.startPeriod, selection.endPeriod);
+            setSelection(null);
+        }
+    }, [selection, onEmptyCellSelect]);
+
     return (
         <div
             className="flex flex-col h-full bg-background"
@@ -221,12 +302,14 @@ export function WeekView({
                     </div>
 
                     {/* 每天的列 */}
-                    <div className="flex flex-1">
+                    <div className="flex flex-1" onMouseUp={handleGridMouseUp} onMouseLeave={handleGridMouseUp}>
                         {visibleDays.map((day) => (
                             <div
                                 key={day}
-                                className="flex-1 relative border-r border-dashed border-muted-foreground/20 min-w-0"
+                                className="flex-1 relative border-r border-dashed border-muted-foreground/20 min-w-0 cursor-pointer"
                                 style={{ minHeight: gridHeight }}
+                                onMouseDown={(e) => handleGridMouseDown(e, day, e.currentTarget)}
+                                onMouseMove={(e) => handleGridMouseMove(e, day, e.currentTarget)}
                             >
                                 {/* 网格线 */}
                                 {showGridLines && periods.map((period) => (
@@ -236,6 +319,22 @@ export function WeekView({
                                         style={{ top: (period.number - 1) * periodHeight + periodHeight }}
                                     />
                                 ))}
+
+                                {/* 选中覆盖层 */}
+                                {selection && selection.day === day && (
+                                    <div
+                                        data-selection-overlay
+                                        className="absolute left-[2px] right-[2px] bg-primary/20 border-2 border-primary border-dashed rounded-lg z-10 cursor-pointer hover:bg-primary/30 transition-colors"
+                                        style={{
+                                            top: (selection.startPeriod - 1) * periodHeight + 2,
+                                            height: (selection.endPeriod - selection.startPeriod + 1) * periodHeight - 4,
+                                        }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleAddClick();
+                                        }}
+                                    />
+                                )}
 
                                 {/* 课程卡片 */}
                                 {coursesByDay[day]?.map(({ course, time, overlapping }) => (

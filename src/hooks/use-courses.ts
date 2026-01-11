@@ -4,6 +4,21 @@ import { Course, Schedule } from '@/types';
 export function useCourses() {
     const queryClient = useQueryClient();
 
+    const createMutation = useMutation({
+        mutationFn: async (data: { scheduleId: string; name: string; color: string; credits?: number; note?: string; times: any[] }) => {
+            const res = await fetch('/api/courses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            if (!res.ok) throw new Error('Failed to create course');
+            return res.json() as Promise<Course>;
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['schedules'] });
+        },
+    });
+
     const updateMutation = useMutation({
         mutationFn: async ({ id, data }: { id: string; data: Partial<Course> }) => {
             const res = await fetch(`/api/courses/${id}`, {
@@ -85,8 +100,10 @@ export function useCourses() {
     });
 
     return {
+        createCourse: createMutation.mutateAsync,
         updateCourse: updateMutation.mutateAsync,
         deleteCourse: deleteMutation.mutateAsync,
+        isCreating: createMutation.isPending,
         isUpdating: updateMutation.isPending,
         isDeleting: deleteMutation.isPending,
     };
