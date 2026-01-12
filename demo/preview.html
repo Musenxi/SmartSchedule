@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* iOS System Font Approximation */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f2f2f7;
+            /* iOS Light Gray Background */
+        }
+
+        .widget-container {
+            /* Small Widget Size approx ratio */
+            width: 338px;
+            height: 158px;
+            background-color: #000000;
+            /* Pure Black for Dark Mode */
+            border-radius: 22px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+
+<body class="p-8 flex flex-col items-center gap-8">
+
+    <h1 class="text-2xl font-bold text-gray-800 mb-4"></h1>
+
+    <!-- 场景 1: 双视图 (当前有课 + 接下来有课) -->
+    <div class="flex flex-col items-center">
+        <span class="text-gray-500 mb-2 text-sm">场景 1: 双视图 (Dual View)</span>
+        <div class="widget-container flex flex-col p-[16px]"> <!-- BENCHMARK Padding = 16 -->
+
+            <!-- Header -->
+            <div class="flex flex-row items-center h-[20px] mb-[20px]">
+                <!-- Date -->
+                <span class="text-[13px] font-bold text-white">1月12日 </span>
+                <!-- Day -->
+                <span class="text-[13px] font-bold text-[#ef4444]">周一</span>
+
+                <div class="w-[8px]"></div> <!-- Spacer 8 -->
+
+                <!-- Schedule Name -->
+                <span class="text-[13px] text-[#cccccc] truncate max-w-[80px]">我的课表</span>
+
+                <div class="flex-grow"></div> <!-- Spacer -->
+
+                <!-- Week Bubble -->
+                <div class="bg-[#ef4444]/10 rounded-[4px] px-[6px] py-[2px]">
+                    <span class="text-[11px] text-[#ef4444] block leading-none">第 3 周</span>
+                </div>
+            </div>
+
+            <!-- Content: Dual -->
+            <div class="flex flex-row items-center h-full">
+                <!-- Left Column (Width 126) -->
+                <div class="flex flex-col w-[126px] h-full justify-start">
+                    <!-- Label -->
+                    <span class="text-[12px] text-white mb-[6px]">当前</span>
+                    <!-- Info Row -->
+                    <div class="flex flex-row items-center">
+                        <!-- Bar (Compact Height increased to 44px for 3 lines) -->
+                        <div class="w-[4px] h-[44px] bg-[#facc15] rounded-[2px] flex-shrink-0"></div>
+                        <div class="w-[10px]"></div> <!-- Spacer 10 -->
+                        <!-- Text Stack -->
+                        <div class="flex flex-col">
+                            <span class="text-[16px] font-bold text-white leading-tight truncate w-[100px]">高等数学A</span>
+                            <div class="h-[2px]"></div>
+                            <span class="text-[13px] font-medium text-white leading-none truncate w-[100px]">08:00 -
+                                09:35</span>
+                            <div class="h-[2px]"></div>
+                            <!-- Location on new line -->
+                            <span class="text-[12px] text-[#cccccc] leading-none truncate w-[100px]">@A-101</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="w-[16px]"></div> <!-- Spacer 16 (BENCHMARK) -->
+
+                <!-- Separator -->
+                <div class="w-[0.5px] h-[85px] bg-white/15"></div>
+
+                <div class="w-[16px]"></div> <!-- Spacer 16 (BENCHMARK) -->
+
+                <!-- Right Column (Width 138) -->
+                <div class="flex flex-col w-[138px] h-full justify-start">
+                    <!-- Label -->
+                    <span class="text-[12px] text-white mb-[6px]">接下来</span>
+                    <!-- Info Row -->
+                    <div class="flex flex-row items-center">
+                        <!-- Bar (Compact Height 44px) -->
+                        <div class="w-[4px] h-[44px] bg-[#3b82f6] rounded-[2px] flex-shrink-0"></div>
+                        <div class="w-[10px]"></div> <!-- Spacer 10 -->
+                        <!-- Text Stack -->
+                        <div class="flex flex-col">
+                            <span class="text-[16px] font-bold text-white leading-tight truncate w-[110px]">大学英语</span>
+                            <div class="h-[2px]"></div>
+                            <span class="text-[13px] font-medium text-white leading-none truncate w-[110px]">09:55 -
+                                11:30</span>
+                            <div class="h-[2px]"></div>
+                            <span class="text-[12px] text-[#cccccc] leading-none truncate w-[110px]">@B-205</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 场景 2: 单视图 (Next) -->
+    <div class="flex flex-col items-center">
+        <span class="text-gray-500 mb-2 text-sm">场景 2: 单视图 (Single View)</span>
+        <div class="widget-container flex flex-col p-[16px]">
+            <!-- Header -->
+            <div class="flex flex-row items-center h-[20px] mb-[20px]">
+                <span class="text-[13px] font-bold text-white">1月12日 </span>
+                <span class="text-[13px] font-bold text-[#ef4444]">周一</span>
+                <div class="w-[8px]"></div>
+                <span class="text-[13px] text-[#cccccc] truncate max-w-[80px]">我的课表</span>
+                <div class="flex-grow"></div>
+                <div class="bg-[#ef4444]/10 rounded-[4px] px-[6px] py-[2px]">
+                    <span class="text-[11px] text-[#ef4444] block leading-none">第 3 周</span>
+                </div>
+            </div>
+
+            <!-- Content: Single Centered -->
+            <div class="flex flex-col justify-center h-full pb-[20px]">
+                <!-- Label -->
+                <span class="text-[12px] text-white mb-[6px]">接下来</span>
+                <!-- Info Row -->
+                <div class="flex flex-row items-center">
+                    <!-- Bar (Regular Height 48px) -->
+                    <div class="w-[5px] h-[48px] bg-[#a855f7] rounded-[2px] flex-shrink-0"></div>
+                    <div class="w-[10px]"></div>
+                    <!-- Text -->
+                    <div class="flex flex-col w-full">
+                        <span class="text-[16px] font-bold text-white leading-tight truncate">线性代数</span>
+                        <div class="h-[2px]"></div>
+                        <span class="text-[13px] font-medium text-white leading-none truncate">14:00 - 16:00</span>
+                        <div class="h-[2px]"></div>
+                        <span class="text-[12px] text-[#cccccc] leading-none truncate">@C-302</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 场景 3: 明天视图 -->
+    <div class="flex flex-col items-center">
+        <span class="text-gray-500 mb-2 text-sm">场景 3: 明天视图 (Tomorrow View)</span>
+        <div class="widget-container flex flex-col p-[16px]">
+            <!-- Header -->
+            <div class="flex flex-row items-center h-[20px] mb-[20px]">
+                <span class="text-[13px] font-bold text-white">1月12日 </span>
+                <span class="text-[13px] font-bold text-[#ef4444]">周一</span>
+                <div class="w-[8px]"></div>
+                <span class="text-[13px] text-[#cccccc] truncate max-w-[80px]">我的课表</span>
+                <div class="flex-grow"></div>
+                <div class="bg-[#ef4444]/10 rounded-[4px] px-[6px] py-[2px]">
+                    <span class="text-[11px] text-[#ef4444] block leading-none">第 3 周</span>
+                </div>
+            </div>
+
+            <!-- Content: Single Centered -->
+            <div class="flex flex-col justify-center h-full pb-[20px]">
+                <!-- Label -->
+                <span class="text-[12px] text-white mb-[6px]">明天</span>
+                <!-- Info Row -->
+                <div class="flex flex-row items-center">
+                    <!-- Bar (Regular Height 48px) -->
+                    <div class="w-[5px] h-[48px] bg-[#22c55e] rounded-[2px] flex-shrink-0"></div>
+                    <div class="w-[10px]"></div>
+                    <!-- Text -->
+                    <div class="flex flex-col w-full">
+                        <span class="text-[16px] font-bold text-white leading-tight truncate">计算机网络</span>
+                        <div class="h-[2px]"></div>
+                        <span class="text-[13px] font-medium text-white leading-none truncate">08:00 - 09:35</span>
+                        <div class="h-[2px]"></div>
+                        <span class="text-[12px] text-[#cccccc] leading-none truncate">@D-405</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 场景 4: 空视图 -->
+    <div class="flex flex-col items-center">
+        <span class="text-gray-500 mb-2 text-sm">场景 4: 空视图 (Empty State)</span>
+        <div class="widget-container flex flex-col p-[16px]">
+            <!-- Header -->
+            <div class="flex flex-row items-center h-[20px] mb-[20px]">
+                <span class="text-[13px] font-bold text-white">1月13日 </span>
+                <span class="text-[13px] font-bold text-[#ef4444]">周二</span>
+                <div class="w-[8px]"></div>
+                <span class="text-[13px] text-[#cccccc] truncate max-w-[80px]">我的课表</span>
+                <div class="flex-grow"></div>
+                <div class="bg-[#ef4444]/10 rounded-[4px] px-[6px] py-[2px]">
+                    <span class="text-[11px] text-[#ef4444] block leading-none">第 3 周</span>
+                </div>
+            </div>
+
+            <!-- Content: Center Text -->
+            <div class="flex flex-col flex-grow items-center justify-center pb-[20px]">
+                <span class="text-[30px]">🎉</span>
+                <div class="h-[8px]"></div>
+                <span class="text-[15px] text-[#cccccc] text-center">今日课程已结束，明天也没有课</span>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

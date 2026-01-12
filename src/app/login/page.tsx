@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from "next-auth/react"
 import TurnstileWidget from '@/components/auth/turnstile-widget';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 import { Suspense } from 'react';
 
@@ -128,12 +129,10 @@ function LoginContent() {
             <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
               密码
             </label>
-            <input
+            <PasswordInput
               id="password"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-background border border-input rounded-xl focus:ring-2 focus:ring-ring focus:border-input transition-all outline-none text-foreground placeholder:text-muted-foreground"
               placeholder="••••••••"
               required
             />

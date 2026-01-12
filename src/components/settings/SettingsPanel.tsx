@@ -5,6 +5,7 @@ import { Schedule, TimeTable } from '@/types';
 import { TimeTableListModal } from '../schedule/TimeTableListModal';
 import { AppearanceSettingsModal } from './AppearanceSettingsModal';
 import { AISettingsModal } from './AISettingsModal';
+import { WidgetSetupModal } from './WidgetSetupModal';
 
 interface SettingsPanelProps {
     currentSchedule?: Schedule;
@@ -29,6 +30,7 @@ export function SettingsPanel({
     const [isTimeListOpen, setIsTimeListOpen] = useState(false);
     const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
     const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
+    const [isWidgetSetupOpen, setIsWidgetSetupOpen] = useState(false);
 
     const activeTimeTable = timeTables.find(t => t.id === currentSchedule?.activeTimeTableId) || timeTables.find(t => t.isDefault) || timeTables[0];
 
@@ -154,6 +156,23 @@ export function SettingsPanel({
                         </div>
                     </div>
 
+                    {/* iOS Widget Setup */}
+                    <div
+                        className="flex items-center justify-between p-3 bg-muted/30 rounded-xl cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                            setIsWidgetSetupOpen(true);
+                        }}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-lg text-blue-600 dark:text-blue-400">
+                                <LayoutTemplate className="w-5 h-5" />
+                            </div>
+                            <div className="font-medium">iOS 桌面小组件</div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    </div>
+
+
                     <div
                         className="flex items-center justify-between p-4 bg-muted/30 rounded-xl cursor-pointer hover:bg-muted/50 transition-colors"
                         onClick={() => setIsAISettingsOpen(true)}
@@ -210,37 +229,41 @@ export function SettingsPanel({
                         </div>
                     </div>
                 </section>
-            </div>
+            </div >
 
             {/* Footer for Modal Only */}
-            {isModal && onClose && (
-                <div className="px-6 py-4 border-t border-border bg-muted/10 text-right">
-                    <button
-                        onClick={onClose}
-                        className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                    >
-                        完成
-                    </button>
-                </div>
-            )}
+            {
+                isModal && onClose && (
+                    <div className="px-6 py-4 border-t border-border bg-muted/10 text-right">
+                        <button
+                            onClick={onClose}
+                            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                        >
+                            完成
+                        </button>
+                    </div>
+                )
+            }
 
             {/* Nested TimeTable List Modal */}
-            {currentSchedule && (
-                <TimeTableListModal
-                    isOpen={isTimeListOpen}
-                    schedule={currentSchedule}
-                    timeTables={timeTables}
-                    onClose={() => setIsTimeListOpen(false)}
-                    onScheduleUpdate={async (id, data) => {
-                        if (onScheduleUpdate) await onScheduleUpdate(id, data);
-                    }}
-                    onTimeTablesRefresh={async () => {
-                        if (onTimeTablesRefresh) await onTimeTablesRefresh();
-                    }}
-                    hasBackdrop={true}
-                    zIndex={60}
-                />
-            )}
+            {
+                currentSchedule && (
+                    <TimeTableListModal
+                        isOpen={isTimeListOpen}
+                        schedule={currentSchedule}
+                        timeTables={timeTables}
+                        onClose={() => setIsTimeListOpen(false)}
+                        onScheduleUpdate={async (id, data) => {
+                            if (onScheduleUpdate) await onScheduleUpdate(id, data);
+                        }}
+                        onTimeTablesRefresh={async () => {
+                            if (onTimeTablesRefresh) await onTimeTablesRefresh();
+                        }}
+                        hasBackdrop={true}
+                        zIndex={60}
+                    />
+                )
+            }
 
             {/* Nested Appearance Settings Modal */}
             <AppearanceSettingsModal
@@ -253,6 +276,12 @@ export function SettingsPanel({
                 isOpen={isAISettingsOpen}
                 onClose={() => setIsAISettingsOpen(false)}
             />
-        </div>
+
+            {/* Nested Widget Setup Modal */}
+            <WidgetSetupModal
+                isOpen={isWidgetSetupOpen}
+                onClose={() => setIsWidgetSetupOpen(false)}
+            />
+        </div >
     );
 }

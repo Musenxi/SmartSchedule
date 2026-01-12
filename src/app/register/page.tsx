@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from "next-auth/react"
 import TurnstileWidget from '@/components/auth/turnstile-widget';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -242,12 +243,10 @@ export default function RegisterPage() {
                         <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
                             密码
                         </label>
-                        <input
+                        <PasswordInput
                             id="password"
-                            type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-4 py-3 bg-background border border-input rounded-xl focus:ring-2 focus:ring-ring focus:border-input transition-all outline-none text-foreground placeholder:text-muted-foreground"
                             placeholder="至少6个字符"
                             required
                         />
@@ -257,12 +256,10 @@ export default function RegisterPage() {
                         <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground mb-1">
                             确认密码
                         </label>
-                        <input
+                        <PasswordInput
                             id="confirmPassword"
-                            type="password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="w-full px-4 py-3 bg-background border border-input rounded-xl focus:ring-2 focus:ring-ring focus:border-input transition-all outline-none text-foreground placeholder:text-muted-foreground"
                             placeholder="再次输入密码"
                             required
                         />

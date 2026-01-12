@@ -7,13 +7,15 @@ import { ArrowLeft, User, Mail, Lock, Loader2, Save, CheckCircle2, AlertTriangle
 import { signOut } from "next-auth/react";
 
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { WidgetSettings } from '@/components/profile/WidgetSettings';
 import { cn } from '@/lib/utils';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 export default function ProfilePage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
-    const [activeTab, setActiveTab] = useState<'general' | 'security' | 'delete'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'security' | 'widgets' | 'delete'>('general');
 
     // Form States
     const [name, setName] = useState('');
@@ -231,6 +233,16 @@ export default function ProfilePage() {
                             安全设置
                         </button>
                         <button
+                            onClick={() => { setActiveTab('widgets'); setMessage(null); }}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'widgets'
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                                }`}
+                        >
+                            <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" /></svg>
+                            桌面小组件
+                        </button>
+                        <button
                             onClick={() => { setActiveTab('delete'); setMessage(null); }}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'delete'
                                 ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
@@ -272,6 +284,12 @@ export default function ProfilePage() {
                                         注销账户
                                     </>
                                 )}
+                                {activeTab === 'widgets' && (
+                                    <>
+                                        <div className="w-1 h-6 bg-purple-500 rounded-full"></div>
+                                        桌面小组件
+                                    </>
+                                )}
                             </h2>
 
                             {message && (
@@ -309,6 +327,8 @@ export default function ProfilePage() {
                                         </div>
                                     </div>
                                 </div>
+                            ) : activeTab === 'widgets' ? (
+                                <WidgetSettings />
                             ) : (
                                 <form onSubmit={handleUpdateProfile} className="space-y-6">
                                     {activeTab === 'general' && (
@@ -389,12 +409,11 @@ export default function ProfilePage() {
                                                 <div className="space-y-2">
                                                     <label className="text-sm font-medium text-muted-foreground">当前密码</label>
                                                     <div className="relative">
-                                                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                                        <input
-                                                            type="password"
+                                                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
+                                                        <PasswordInput
                                                             value={currentPassword}
                                                             onChange={e => setCurrentPassword(e.target.value)}
-                                                            className="w-full pl-10 pr-4 py-2.5 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                                            className="w-full pl-10 py-2.5 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                                                             placeholder="请输入当前密码以验证身份"
                                                             required
                                                         />
@@ -409,12 +428,11 @@ export default function ProfilePage() {
                                                     {hasPassword ? '新密码' : '设置登录密码'}
                                                 </label>
                                                 <div className="relative">
-                                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                                    <input
-                                                        type="password"
+                                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
+                                                    <PasswordInput
                                                         value={newPassword}
                                                         onChange={e => setNewPassword(e.target.value)}
-                                                        className="w-full pl-10 pr-4 py-2.5 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                                        className="w-full pl-10 py-2.5 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                                                         placeholder="至少 6 位字符"
                                                         minLength={6}
                                                         required
@@ -430,12 +448,11 @@ export default function ProfilePage() {
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium text-muted-foreground">确认新密码</label>
                                                 <div className="relative">
-                                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                                    <input
-                                                        type="password"
+                                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
+                                                    <PasswordInput
                                                         value={confirmPassword}
                                                         onChange={e => setConfirmPassword(e.target.value)}
-                                                        className="w-full pl-10 pr-4 py-2.5 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                                        className="w-full pl-10 py-2.5 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                                                         placeholder="再次输入新密码"
                                                         minLength={6}
                                                         required
@@ -478,7 +495,6 @@ export default function ProfilePage() {
                 description={`此操作将永久删除您的账户及所有关联数据（包括课程表、任务等）且无法恢复。\n\n您确定要继续吗？`}
                 confirmText="确认注销"
                 cancelText="取消"
-                variant="destructive"
                 onConfirm={handleDeleteAccount}
             />
         </div>

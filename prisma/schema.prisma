@@ -43,7 +43,11 @@ model User {
   aiProvider          String?
   aiModel             String?
   aiApiKey            String?
+
   aiEnabled           Boolean  @default(false)
+
+  // Widget Access
+  widgetToken         String?  @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
