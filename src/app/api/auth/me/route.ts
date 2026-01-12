@@ -23,6 +23,12 @@ export async function GET(request: NextRequest) {
                 name: true,
                 avatar: true,
                 role: true,
+                password: true,
+                accounts: {
+                    select: {
+                        provider: true
+                    }
+                }
             }
         });
 
@@ -33,7 +39,19 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        return NextResponse.json({ user });
+        const isGitHub = user.accounts.some(acc => acc.provider === 'github');
+
+        return NextResponse.json({
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                avatar: user.avatar,
+                role: user.role
+            },
+            isGitHub,
+            hasPassword: !!user.password
+        });
     } catch (e) {
         return NextResponse.json(
             { error: '未登录' },
@@ -58,7 +76,12 @@ export async function PUT(request: NextRequest) {
 
         // Verify user exists and get current password
         const user = await prisma.user.findUnique({
-            where: { id: session.user.id }
+            where: { id: session.user.id },
+            include: {
+                accounts: {
+                    select: { provider: true }
+                }
+            }
         });
 
         if (!user) {
@@ -68,11 +91,19 @@ export async function PUT(request: NextRequest) {
             );
         }
 
+        const isGitHub = user.accounts.some(acc => acc.provider === 'github');
+
         const updateData: any = {};
 
         // Update basic info
         if (name) updateData.name = name;
         if (email && email !== user.email) {
+            if (isGitHub) {
+                return NextResponse.json(
+                    { error: 'GitHub 注册用户不可修改邮箱' },
+                    { status: 400 }
+                );
+            }
             // Check if email is already taken by another user
             const existingUser = await prisma.user.findUnique({
                 where: { email }
@@ -125,12 +156,8 @@ export async function PUT(request: NextRequest) {
         // Update password
         if (newPassword) {
             if (!user.password) {
-                if (currentPassword) {
-                    return NextResponse.json(
-                        { error: 'OAuth 用户請直接设置密码' },
-                        { status: 400 }
-                    );
-                }
+                // If user has no password (e.g. OAuth user setting password for first time),
+                // allow setting it without currentPassword
             } else {
                 if (!currentPassword) {
                     return NextResponse.json(

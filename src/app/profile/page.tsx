@@ -7,6 +7,7 @@ import { ArrowLeft, User, Mail, Lock, Loader2, Save, CheckCircle2, AlertTriangle
 import { signOut } from "next-auth/react";
 
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { cn } from '@/lib/utils';
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -78,7 +79,8 @@ export default function ProfilePage() {
         }
     };
 
-    // Confirm Dialog State
+    const [isGitHub, setIsGitHub] = useState(false);
+    const [hasPassword, setHasPassword] = useState(true); // Default to true to prevent UI flash
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     useEffect(() => {
@@ -96,6 +98,8 @@ export default function ProfilePage() {
                     setUser(data.user);
                     setName(data.user.name || '');
                     setEmail(data.user.email || '');
+                    setIsGitHub(!!data.isGitHub);
+                    setHasPassword(!!data.hasPassword);
                 }
             })
             .catch(console.error)
@@ -138,10 +142,12 @@ export default function ProfilePage() {
                 if (newPassword.length < 6) {
                     throw new Error('新密码长度不能少于6位');
                 }
-                if (!currentPassword) {
+                if (hasPassword && !currentPassword) {
                     throw new Error('请输入当前密码以确认修改');
                 }
-                body.currentPassword = currentPassword;
+                if (hasPassword) {
+                    body.currentPassword = currentPassword;
+                }
                 body.newPassword = newPassword;
             }
 
@@ -163,6 +169,7 @@ export default function ProfilePage() {
                 setCurrentPassword('');
                 setNewPassword('');
                 setConfirmPassword('');
+                setHasPassword(true);
             }
 
             if (data.user) {
@@ -329,17 +336,21 @@ export default function ProfilePage() {
                                                         type="email"
                                                         value={email}
                                                         onChange={e => setEmail(e.target.value)}
-                                                        className="w-full pl-10 pr-4 py-2.5 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                                        className={cn(
+                                                            "w-full pl-10 pr-4 py-2.5 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all",
+                                                            isGitHub && "opacity-60 cursor-not-allowed bg-muted/50"
+                                                        )}
                                                         placeholder="your@email.com"
+                                                        readOnly={isGitHub}
                                                         required
                                                     />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground pl-1">
-                                                    更改邮箱后，下次登录请使用新邮箱
+                                                    {isGitHub ? "GitHub 账号注册后不可修改邮箱" : "更改邮箱后，下次登录请使用新邮箱"}
                                                 </p>
                                             </div>
 
-                                            {emailVerificationEnabled && user?.email !== email && (
+                                            {emailVerificationEnabled && !isGitHub && user?.email !== email && (
                                                 <div className="space-y-2 animate-in slide-in-from-top-2">
                                                     <label className="text-sm font-medium text-muted-foreground">验证码</label>
                                                     <div className="flex gap-2">
@@ -374,25 +385,29 @@ export default function ProfilePage() {
 
                                     {activeTab === 'security' && (
                                         <>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-muted-foreground">当前密码</label>
-                                                <div className="relative">
-                                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                                    <input
-                                                        type="password"
-                                                        value={currentPassword}
-                                                        onChange={e => setCurrentPassword(e.target.value)}
-                                                        className="w-full pl-10 pr-4 py-2.5 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                                        placeholder="请输入当前密码以验证身份"
-                                                        required
-                                                    />
+                                            {hasPassword && (
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-muted-foreground">当前密码</label>
+                                                    <div className="relative">
+                                                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                                        <input
+                                                            type="password"
+                                                            value={currentPassword}
+                                                            onChange={e => setCurrentPassword(e.target.value)}
+                                                            className="w-full pl-10 pr-4 py-2.5 bg-muted/30 border border-input rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                                            placeholder="请输入当前密码以验证身份"
+                                                            required
+                                                        />
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            )}
 
-                                            <hr className="border-border/50 border-dashed" />
+                                            {hasPassword && <hr className="border-border/50 border-dashed" />}
 
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-muted-foreground">新密码</label>
+                                                <label className="text-sm font-medium text-muted-foreground">
+                                                    {hasPassword ? '新密码' : '设置登录密码'}
+                                                </label>
                                                 <div className="relative">
                                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                                     <input
@@ -405,6 +420,11 @@ export default function ProfilePage() {
                                                         required
                                                     />
                                                 </div>
+                                                {!hasPassword && (
+                                                    <p className="text-xs text-muted-foreground pl-1">
+                                                        设置密码后，您可以使用 邮箱+密码 或 GitHub 方式登录
+                                                    </p>
+                                                )}
                                             </div>
 
                                             <div className="space-y-2">
