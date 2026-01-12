@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Providers from '@/components/providers';
@@ -11,6 +11,18 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'SmartSchedule - 智能课程表',
   description: 'AI驱动的智能课程表应用',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'SmartSchedule',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#ffffff',
 };
 
 export default function RootLayout({
