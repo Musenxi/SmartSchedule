@@ -36,7 +36,9 @@ export default function RootLayout({
         <ThemeScript />
         <Providers>
           <ThemeEffect />
-          {children}
+          <main id="main-content" className="min-h-screen">
+            {children}
+          </main>
           <Toaster richColors position="top-center" />
         </Providers>
       </body>

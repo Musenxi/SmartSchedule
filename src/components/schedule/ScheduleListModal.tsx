@@ -93,6 +93,7 @@ export function ScheduleListModal({
                 </h3>
                 <button
                     onClick={onClose}
+                    aria-label="关闭"
                     className="p-1 text-muted-foreground hover:bg-muted rounded-full transition-colors"
                 >
                     <X className="w-5 h-5" />
@@ -145,6 +146,7 @@ export function ScheduleListModal({
                                 {!schedule.isActive && (
                                     <button
                                         onClick={(e) => handleDeleteClick(e, schedule.id)}
+                                        aria-label="删除课表"
                                         className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100 mobile:opacity-100"
                                         title="删除"
                                     >
@@ -158,6 +160,7 @@ export function ScheduleListModal({
                                         e.stopPropagation();
                                         onEdit(schedule.id);
                                     }}
+                                    aria-label="编辑课表设置"
                                     className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                                     title="编辑设置"
                                 >

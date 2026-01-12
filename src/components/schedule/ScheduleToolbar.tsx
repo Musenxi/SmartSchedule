@@ -176,8 +176,9 @@ export function ScheduleToolbar({
                 <button
                     onClick={onPrevWeek}
                     disabled={isFirstWeek}
+                    aria-label="上一周"
                     className={cn(
-                        "p-2 rounded-lg transition-colors border border-transparent",
+                        "p-3 rounded-lg transition-colors border border-transparent",
                         isFirstWeek
                             ? "text-muted-foreground/50 cursor-not-allowed"
                             : "hover:bg-muted text-foreground hover:border-border"
@@ -279,7 +280,8 @@ export function ScheduleToolbar({
                                     <div className="flex items-center justify-between mb-2">
                                         <button
                                             onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1))}
-                                            className="p-1 hover:bg-muted rounded-md transition-colors"
+                                            aria-label="上一个月"
+                                            className="p-2 hover:bg-muted rounded-md transition-colors"
                                         >
                                             <ChevronLeft className="w-4 h-4" />
                                         </button>
@@ -288,7 +290,8 @@ export function ScheduleToolbar({
                                         </span>
                                         <button
                                             onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1))}
-                                            className="p-1 hover:bg-muted rounded-md transition-colors"
+                                            aria-label="下一个月"
+                                            className="p-2 hover:bg-muted rounded-md transition-colors"
                                         >
                                             <ChevronRight className="w-4 h-4" />
                                         </button>
@@ -318,7 +321,7 @@ export function ScheduleToolbar({
                                                     }}
                                                     className={cn(
                                                         "w-full aspect-square rounded-lg text-xs font-medium transition-all flex items-center justify-center",
-                                                        !isCurrentMonth && "text-muted-foreground/40",
+                                                        !isCurrentMonth && "text-muted-foreground/60",
                                                         isCurrentMonth && "text-foreground hover:bg-muted",
                                                         isToday && "bg-primary text-primary-foreground hover:bg-primary/90"
                                                     )}
@@ -349,8 +352,9 @@ export function ScheduleToolbar({
                 <button
                     onClick={onNextWeek}
                     disabled={isLastWeek}
+                    aria-label="下一周"
                     className={cn(
-                        "p-2 rounded-lg transition-colors border border-transparent",
+                        "p-3 rounded-lg transition-colors border border-transparent",
                         isLastWeek
                             ? "text-muted-foreground/50 cursor-not-allowed"
                             : "hover:bg-muted text-foreground hover:border-border"
