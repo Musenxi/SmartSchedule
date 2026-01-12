@@ -704,8 +704,9 @@ export default function SchedulePage() {
   }, [globalTimeTables, schedule?.activeTimeTableId, schedule?.enableAutoTimeTableSwitch, schedule?.firstWeekStart, timeTableConfig, currentWeek]);
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
+    // Dynamic import to avoid SSR issues if used immediately
+    const { signOut } = await import('next-auth/react');
+    await signOut({ callbackUrl: '/login' });
   };
 
   const handleDateSelect = (date: Date) => {

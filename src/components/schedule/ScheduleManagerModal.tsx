@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Calendar as CalendarIcon, Trash2, Plus, BookOpen, Share, Clipboard, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { copyToClipboard } from '@/lib/clipboard';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { CustomCalendar } from '@/components/ui/CustomCalendar';
@@ -129,9 +130,14 @@ ${humanReadable}
 ${code}
 ===END===`;
 
-            await navigator.clipboard.writeText(exportText);
-            setCopySuccess(true);
-            setTimeout(() => setCopySuccess(false), 2000);
+            const success = await copyToClipboard(exportText);
+
+            if (success) {
+                setCopySuccess(true);
+                setTimeout(() => setCopySuccess(false), 2000);
+            } else {
+                alert('复制失败，请检查浏览器权限');
+            }
 
             // Optional: Show alert or toast with the code for visual confirmation
             // alert(`分享码已生成并复制到剪贴板: ${code}\n有效期30分钟`);

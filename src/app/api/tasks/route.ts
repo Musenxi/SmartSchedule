@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthUser } from '@/lib/auth';
+import { auth } from '@/auth';
 import { TaskInput } from '@/types/task';
 
 // GET: 获取任务列表
 export async function GET(req: NextRequest) {
-    const user = getAuthUser(req);
-    if (!user) {
+    const session = await auth();
+    if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
         const tasks = await prisma.task.findMany({
-            where: { userId: user.userId },
+            where: { userId: session.user.id },
             include: {
                 course: {
                     select: { id: true, name: true, color: true }
@@ -32,8 +32,8 @@ export async function GET(req: NextRequest) {
 
 // POST: 创建任务
 export async function POST(req: NextRequest) {
-    const user = getAuthUser(req);
-    if (!user) {
+    const session = await auth();
+    if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
         const task = await prisma.task.create({
             data: {
-                userId: user.userId,
+                userId: session.user.id,
                 title: body.title,
                 type: body.type,
                 description: body.description,

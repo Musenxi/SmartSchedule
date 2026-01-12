@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthUser } from '@/lib/auth';
+import { auth } from '@/auth';
 import { TaskInput } from '@/types/task';
 
 // PUT: 更新任务
@@ -8,8 +8,8 @@ export async function PUT(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const user = getAuthUser(req);
-    if (!user) {
+    const session = await auth();
+    if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -22,7 +22,7 @@ export async function PUT(
             where: { id },
         });
 
-        if (!existingTask || existingTask.userId !== user.userId) {
+        if (!existingTask || existingTask.userId !== session.user.id) {
             return NextResponse.json({ error: 'Task not found' }, { status: 404 });
         }
 
@@ -59,8 +59,8 @@ export async function DELETE(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const user = getAuthUser(req);
-    if (!user) {
+    const session = await auth();
+    if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -70,7 +70,7 @@ export async function DELETE(
             where: { id },
         });
 
-        if (!existingTask || existingTask.userId !== user.userId) {
+        if (!existingTask || existingTask.userId !== session.user.id) {
             return NextResponse.json({ error: 'Task not found' }, { status: 404 });
         }
 

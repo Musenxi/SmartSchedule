@@ -1,7 +1,9 @@
 import { signOut } from '@/auth';
+import { NextResponse } from 'next/server';
 
 export async function POST() {
     // Use NextAuth signOut to clear session
-    // redirectTo ensures proper redirection after logout (though client might handle it via window.location)
-    return await signOut({ redirectTo: '/login' });
+    // redirects: false prevents server-side redirect which causes CORS issues with fetch
+    await signOut({ redirect: false });
+    return NextResponse.json({ success: true });
 }

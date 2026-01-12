@@ -197,8 +197,9 @@ export function SettingsPanel({
 
                     <div className="flex items-center justify-between p-3 bg-destructive/10 rounded-xl cursor-pointer hover:bg-destructive/20 transition-colors" onClick={() => {
                         // 处理退出逻辑
-                        fetch('/api/auth/logout', { method: 'POST' }).then(() => {
-                            window.location.href = '/login';
+                        // 处理退出逻辑
+                        import('next-auth/react').then(({ signOut }) => {
+                            signOut({ callbackUrl: '/login' });
                         });
                     }}>
                         <div className="flex items-center gap-2 text-destructive">

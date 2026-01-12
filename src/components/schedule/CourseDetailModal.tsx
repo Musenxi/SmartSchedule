@@ -3,6 +3,7 @@
 import { Course, Period, CourseTime } from '@/types';
 import { X, Calendar, Clock, User, MapPin, Copy, FileText, Trash2, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { copyToClipboard } from '@/lib/clipboard';
 import { useState } from 'react';
 import { useCourses } from '@/hooks/use-courses';
 import { Modal } from '@/components/ui/Modal';
@@ -209,9 +210,13 @@ ${humanReadable}
 ${base64Data}
 ===END===`;
 
-        navigator.clipboard.writeText(exportText).then(() => {
-            setCopySuccess(true);
-            setTimeout(() => setCopySuccess(false), 2000);
+        copyToClipboard(exportText).then((success) => {
+            if (success) {
+                setCopySuccess(true);
+                setTimeout(() => setCopySuccess(false), 2000);
+            } else {
+                alert('复制失败，请检查浏览器权限');
+            }
         });
     };
 

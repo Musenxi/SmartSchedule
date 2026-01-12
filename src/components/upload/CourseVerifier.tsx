@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Pencil, Trash2, Check, X, Plus, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ClipboardPaste } from 'lucide-react';
 import { CourseForm } from '../schedule/CourseForm';
@@ -197,7 +198,7 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel, s
             }
 
             if (!data) {
-                alert('无法识别的内容，请确保复制了完整的分享文本');
+                toast.error('无法识别的内容，请确保复制了完整的分享文本');
                 return;
             }
 
@@ -242,21 +243,21 @@ export function CourseVerifier({ courses: initialCourses, onConfirm, onCancel, s
                     }));
                 }
             } else {
-                alert('未知的数据格式');
+                toast.error('未知的数据格式');
                 return;
             }
 
             if (newCoursesToAdd.length > 0) {
                 setCourses(prev => [...prev, ...newCoursesToAdd]);
-                alert(`已成功识别并添加 ${newCoursesToAdd.length} 门课程`);
+                toast.success(`已成功识别并添加 ${newCoursesToAdd.length} 门课程`);
                 setShowPasteModal(false);
             } else {
-                alert('未找到有效的课程数据');
+                toast.info('未找到有效的课程数据');
             }
 
         } catch (error) {
             console.error('Paste failed', error);
-            alert('解析失败，请检查文本格式');
+            toast.error('解析失败，请检查文本格式');
         }
     };
 

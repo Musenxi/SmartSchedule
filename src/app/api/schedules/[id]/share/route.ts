@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth';
+import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { addMinutes } from 'date-fns';
 
@@ -10,14 +10,14 @@ export async function POST(
     try {
         const params = await context.params;
         const scheduleId = params.id;
-        const user = getAuthUser(request);
-        if (!user) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         // Verify ownership
         const schedule = await prisma.schedule.findUnique({
-            where: { id: scheduleId, userId: user.userId },
+            where: { id: scheduleId, userId: session.user.id },
         });
 
         if (!schedule) {

@@ -1,5 +1,7 @@
 'use client';
 
+import { copyToClipboard } from '@/lib/clipboard';
+
 import { useState } from 'react';
 import { X, User, MapPin, BookOpen, Trash2, Share, Check, CheckCircle, Circle } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
@@ -78,6 +80,9 @@ export function CourseListModal({
         }
     };
 
+    // Use shared utility
+    // const copyToClipboard = ... (removed)
+
     const handleBatchShare = async () => {
         if (selectedIds.size === 0) return;
 
@@ -120,13 +125,12 @@ ${humanReadable}
 ${base64Data}
 ===END===`;
 
-        try {
-            await navigator.clipboard.writeText(exportText);
+        const success = await copyToClipboard(exportText);
+        if (success) {
             setCopySuccess(true);
             setTimeout(() => setCopySuccess(false), 2000);
-        } catch (e) {
-            console.error('Copy failed', e);
-            alert('复制失败');
+        } else {
+            alert('复制失败，请检查浏览器权限');
         }
     };
 

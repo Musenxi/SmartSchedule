@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth';
+import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { TaskType } from '@/generated/prisma/enums';
 import { Prisma } from '@/generated/prisma/client';
 
 export async function POST(request: NextRequest) {
     try {
-        const user = getAuthUser(request);
-        if (!user) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
         // Validate and prepare data
         const tasksToCreate: Prisma.TaskCreateManyInput[] = tasks.map((task: any) => ({
-            userId: user.userId,
+            userId: session.user.id,
             title: task.title,
             description: task.description || '',
             type: TaskType.EXAM, // Default to EXAM
