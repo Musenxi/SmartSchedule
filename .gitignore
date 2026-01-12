@@ -42,4 +42,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# pwa
+/server.log
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/fallback-*.js
+
 /src/generated/prisma
