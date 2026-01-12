@@ -98,4 +98,4 @@
 
 访问 `http://localhost:3000` 即可开始使用。
 
-*内置 AI 识别目前主要支持 Google Gemini Vision 系列模型。*
+*内置 AI 识别目前主要支持 Google Gemini 系列模型。*
