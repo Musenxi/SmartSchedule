@@ -19,7 +19,11 @@ export async function GET(request: NextRequest) {
         const settings = await prisma.systemSetting.findMany();
         const settingsMap: Record<string, string> = {};
         settings.forEach(s => {
-            settingsMap[s.key] = s.value;
+            if (['gemini_api_key', 'turnstile_secret_key', 'smtp_password'].includes(s.key)) {
+                settingsMap[s.key] = '********';
+            } else {
+                settingsMap[s.key] = s.value;
+            }
         });
 
         // Inject Env Var Status (read-only)

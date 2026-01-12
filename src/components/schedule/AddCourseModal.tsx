@@ -74,7 +74,7 @@ export function AddCourseModal({
                     ...(t.location ? { location: t.location } : {}),
                 })),
             };
-            console.log('Submitting course data:', payload);
+            // console.log('Submitting course data:', payload);
             await createCourse(payload);
             onSuccess?.();
             onClose();

@@ -1,7 +1,10 @@
 import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'smartschedule-secret-key-2026';
+if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET must be defined in environment variables');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export interface AuthUser {
     userId: string;

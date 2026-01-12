@@ -11,7 +11,10 @@ const ALGORITHM = 'aes-256-gcm';
 
 // Get or create a 32-byte encryption key
 function getEncryptionKey(): Buffer {
-    const secret = process.env.API_KEY_ENCRYPTION_SECRET || 'smartschedule-ai-api-key-enc';
+    if (!process.env.API_KEY_ENCRYPTION_SECRET) {
+        throw new Error('API_KEY_ENCRYPTION_SECRET must be defined');
+    }
+    const secret = process.env.API_KEY_ENCRYPTION_SECRET;
     // Use SHA-256 to always get exactly 32 bytes
     return crypto.createHash('sha256').update(secret).digest();
 }

@@ -6,7 +6,11 @@ import { z } from 'zod';
 import { verifyTurnstileToken } from '@/lib/turnstile';
 import { isSMTPConfigured } from '@/lib/mail';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'smartschedule-secret-key-2026';
+if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET must be defined in environment variables');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
+
 const registerSchema = z.object({
     email: z.string().email('请输入有效的邮箱地址'),
     password: z.string().min(6, '密码至少6个字符'),

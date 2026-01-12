@@ -10,7 +10,10 @@ import crypto from 'crypto';
 const ALGORITHM = 'aes-256-gcm';
 
 function getEncryptionKey(): Buffer {
-    const secret = process.env.API_KEY_ENCRYPTION_SECRET || 'smartschedule-ai-api-key-enc';
+    if (!process.env.API_KEY_ENCRYPTION_SECRET) {
+        throw new Error('API_KEY_ENCRYPTION_SECRET must be defined');
+    }
+    const secret = process.env.API_KEY_ENCRYPTION_SECRET;
     return crypto.createHash('sha256').update(secret).digest();
 }
 
@@ -249,7 +252,7 @@ Return ONLY JSON array:
         });
 
         const text = response.text;
-        console.log('Gemini response (first 500 chars):', text?.substring(0, 500));
+        // console.log('Gemini response (first 500 chars):', text?.substring(0, 500));
 
         // Parse JSON from response
         let courses;

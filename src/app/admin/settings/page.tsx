@@ -49,6 +49,7 @@ export default function AdminSettingsPage() {
     }, []);
 
     const handleSave = async (key: string, value: string) => {
+        if (value === '********') return;
         setSaving(true);
         try {
             const res = await fetch('/api/admin/system-settings', {

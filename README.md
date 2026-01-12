@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js" alt="Next.js">
   <img src="https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript" alt="TypeScript">
   <img src="https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=flat-square&logo=tailwind-css" alt="Tailwind CSS">
-  <img src="https://img.shields.io/badge/Prisma-7-2D3748?style=flat-square&logo=prisma" alt="Prisma">
+  <img src="https://img.shields.io/badge/Prisma-6-2D3748?style=flat-square&logo=prisma" alt="Prisma">
   <img src="https://img.shields.io/badge/PostgreSQL-16-336791?style=flat-square&logo=postgresql" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Auth.js-v5-B01080?style=flat-square&logo=next.js" alt="Auth.js">
   <img src="https://img.shields.io/badge/PWA-Supported-green?style=flat-square" alt="PWA">
@@ -82,6 +82,12 @@
    # 生成随机密钥命令: npx auth secret 或 openssl rand -base64 33
    AUTH_SECRET="your-secret-key"
    
+   # 安全密钥 (生产环境必需)
+   # 用于注册 Token 加密 (使用: openssl rand -hex 32)
+   JWT_SECRET="your-jwt-secret-key"
+   # 用于用户 API Key 加密 (使用: openssl rand -hex 32)
+   API_KEY_ENCRYPTION_SECRET="your-encryption-key"
+
    # AI 接口配置 (可选)
    GEMINI_API_KEY="your-api-key"
    ```
@@ -99,3 +105,40 @@
 访问 `http://localhost:3000` 即可开始使用。
 
 *内置 AI 识别目前主要支持 Google Gemini 系列模型。*
+
+## 部署指南
+
+### Docker 部署 (推荐)
+
+本项目提供了优化过的 `Dockerfile`，支持一键构建生产环境镜像。
+
+1. **构建镜像**
+   ```bash
+   docker build -t smartschedule .
+   ```
+
+2. **启动容器**
+   必须通过 `-e` 参数传入所有关键环境变量：
+
+   ```bash
+   docker run -d -p 3000:3000 \
+     --name smartschedule \
+     -e DATABASE_URL="postgresql://user:pass@host:5432/db" \
+     -e AUTH_SECRET="generate-with-openssl-rand-base64-33" \
+     -e AUTH_URL="https://your-domain.com" \
+     -e JWT_SECRET="generate-with-openssl-rand-hex-32" \
+     -e API_KEY_ENCRYPTION_SECRET="generate-with-openssl-rand-hex-32" \
+     smartschedule
+   ```
+
+### 环境变量说明
+
+| 变量名 | 必填 | 说明 |
+|--------|------|------|
+| `DATABASE_URL` | 是 | PostgreSQL 数据库连接地址 |
+| `AUTH_SECRET` | 是 | NextAuth 会话加密密钥 |
+| `AUTH_URL` | 是 | 生产环境必须设置为实际访问的 URL |
+| `JWT_SECRET` | 是 | 注册流程 Token 签名密钥 |
+| `API_KEY_ENCRYPTION_SECRET` | 是 | 用户侧 API Key 存储加密密钥 |
+| `GEMINI_API_KEY` | 否 | 全局默认 AI Key (可选配置) |
+
