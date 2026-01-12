@@ -12,16 +12,7 @@ export function SharePasteUploader({ onUploadComplete, onBack }: SharePasteUploa
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handlePaste = async () => {
-        try {
-            const clipboardText = await navigator.clipboard.readText();
-            setText(clipboardText);
-            setError(null);
-        } catch (e) {
-            console.error('Failed to read clipboard', e);
-            setError('无法读取剪贴板，请手动粘贴');
-        }
-    };
+    // Auto-paste removed to avoid permission issues in non-secure contexts
 
     const handleSubmit = async () => {
         if (!text.trim()) return;
@@ -81,7 +72,7 @@ export function SharePasteUploader({ onUploadComplete, onBack }: SharePasteUploa
                 </div>
                 <h3 className="text-lg font-medium">粘贴分享码</h3>
                 <p className="text-sm text-muted-foreground">
-                    请粘贴您收到的完整分享文本或 10 位分享码
+                    请直接在下方文本框中粘贴分享码或完整分享文本
                 </p>
             </div>
 
@@ -94,19 +85,9 @@ export function SharePasteUploader({ onUploadComplete, onBack }: SharePasteUploa
                             "w-full h-32 p-4 text-sm bg-muted/50 border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all",
                             error ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"
                         )}
-                        placeholder="在此粘贴..."
+                        placeholder="在此处手动粘贴 (Ctrl+V) ..."
+                        autoFocus
                     />
-                    {!text && (
-                        <button
-                            onClick={handlePaste}
-                            className="absolute inset-0 flex items-center justify-center bg-transparent text-primary font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-xl"
-                        >
-                            <span className="bg-background/80 backdrop-blur px-4 py-2 rounded-lg shadow-sm border flex items-center gap-2">
-                                <Clipboard className="w-4 h-4" />
-                                点击粘贴剪贴板内容
-                            </span>
-                        </button>
-                    )}
                 </div>
 
                 {error && (
