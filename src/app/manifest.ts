@@ -2,8 +2,8 @@ import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
     return {
-        name: 'SmartSchedule',
-        short_name: 'SmartSchedule',
+        name: '智能课程表',
+        short_name: '智能课程表',
         description: 'AI-powered schedule management',
         start_url: '/',
         display: 'standalone',

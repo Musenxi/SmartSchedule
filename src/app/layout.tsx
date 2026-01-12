@@ -9,7 +9,7 @@ import { Toaster } from 'sonner';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'SmartSchedule - 智能课程表',
+  title: '智能课程表',
   description: 'AI驱动的智能课程表应用',
   manifest: '/manifest.json',
   appleWebApp: {
