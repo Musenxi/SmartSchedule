@@ -1,15 +1,7 @@
-import { NextResponse } from 'next/server';
+import { signOut } from '@/auth';
 
 export async function POST() {
-    const response = NextResponse.json({ success: true });
-
-    response.cookies.set('token', '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 0,
-        path: '/',
-    });
-
-    return response;
+    // Use NextAuth signOut to clear session
+    // redirectTo ensures proper redirection after logout (though client might handle it via window.location)
+    return await signOut({ redirectTo: '/login' });
 }

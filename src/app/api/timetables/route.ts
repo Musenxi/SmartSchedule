@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthUser } from '@/lib/auth';
+import { auth } from '@/auth';
 import { z } from 'zod';
 
 // 禁用 Next.js 路由缓存
@@ -20,13 +20,14 @@ const createTimeTableSchema = z.object({
 // GET /api/timetables - 获取用户所有时间表
 export async function GET(request: NextRequest) {
     try {
-        const auth = getAuthUser(request);
-        if (!auth) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: '未登录' }, { status: 401 });
         }
+        const userId = session.user.id;
 
         const timeTables = await prisma.timeTable.findMany({
-            where: { userId: auth.userId },
+            where: { userId },
             include: { periods: true },
             orderBy: { createdAt: 'asc' }
         });
@@ -41,24 +42,25 @@ export async function GET(request: NextRequest) {
 // POST /api/timetables - 创建新时间表
 export async function POST(request: NextRequest) {
     try {
-        const auth = getAuthUser(request);
-        if (!auth) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: '未登录' }, { status: 401 });
         }
+        const userId = session.user.id;
 
         const body = await request.json();
         const { name, sameDuration, duration, periods } = createTimeTableSchema.parse(body);
 
         // 检查是否是第一个时间表
         const existingCount = await prisma.timeTable.count({
-            where: { userId: auth.userId }
+            where: { userId }
         });
         const isFirst = existingCount === 0;
 
         // 创建时间表并带默认节次
         const timeTable = await prisma.timeTable.create({
             data: {
-                userId: auth.userId,
+                userId,
                 name: name || '新时间表',
                 sameDuration: sameDuration ?? true,
                 duration: duration,
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
         // 如果是第一个，设为用户默认
         if (isFirst) {
             await prisma.user.update({
-                where: { id: auth.userId },
+                where: { id: userId },
                 data: { defaultTimeTableId: timeTable.id }
             });
         }

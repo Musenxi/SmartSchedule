@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Mail, Lock, Loader2, Save, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, User, Mail, Lock, Loader2, Save, CheckCircle2, AlertTriangle, LogOut } from 'lucide-react';
 import { signOut } from "next-auth/react";
 
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -232,6 +232,14 @@ export default function ProfilePage() {
                         >
                             <AlertTriangle className="w-4 h-4" />
                             注销账户
+                        </button>
+                        <hr className="my-2 border-border/50" />
+                        <button
+                            onClick={() => signOut({ callbackUrl: '/login' })}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                        >
+                            <LogOut className="w-4 h-4" />
+                            退出登录
                         </button>
                     </div>
 

@@ -28,7 +28,7 @@ export function AISmartUploader({ onUploadComplete }: AISmartUploaderProps) {
             setLoadingModels(true);
             try {
                 // First get user config to see default model
-                const configRes = await fetch('/api/ai/config');
+                const configRes = await fetch('/api/ai/settings');
                 let defaultModel = '';
                 if (configRes.ok) {
                     const configData = await configRes.json();

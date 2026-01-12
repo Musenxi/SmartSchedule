@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthUser } from '@/lib/auth';
+import { auth } from '@/auth';
 import { getRandomColor } from '@/lib/color-utils';
 
 interface CourseTimeSlot {
@@ -22,10 +22,11 @@ interface CourseInput {
 }
 
 export async function POST(req: NextRequest) {
-    const user = getAuthUser(req);
-    if (!user) {
+    const session = await auth();
+    if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const userId = session.user.id;
 
     try {
         const { courses, scheduleId, newScheduleName, mode, periodsPerDay, totalWeeks, startDate }: {
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
         if (mode === 'create' || (!mode && newScheduleName)) {
             // 1. 如果新课表需要设为 active，则需将用户的其他课表设为 inactive
             await prisma.schedule.updateMany({
-                where: { userId: user.userId, isActive: true },
+                where: { userId: userId, isActive: true },
                 data: { isActive: false },
             });
 
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
 
             const newSchedule = await prisma.schedule.create({
                 data: {
-                    userId: user.userId,
+                    userId: userId,
                     name: newScheduleName || '新课表',
                     firstWeekStart: firstWeekStart,
                     isActive: true,
@@ -88,12 +89,12 @@ export async function POST(req: NextRequest) {
 
             // 3. 检查用户是否有时间表，如果没有则创建默认时间表
             const existingTimeTable = await prisma.timeTable.findFirst({
-                where: { userId: user.userId }
+                where: { userId: userId }
             });
             if (!existingTimeTable) {
                 await prisma.timeTable.create({
                     data: {
-                        userId: user.userId,
+                        userId: userId,
                         name: '默认时间表',
                         sameDuration: true,
                         isDefault: true,
@@ -121,7 +122,7 @@ export async function POST(req: NextRequest) {
             // 如果没有指定，则查找当前活跃课表
             const activeSchedule = await prisma.schedule.findFirst({
                 where: {
-                    userId: user.userId,
+                    userId: userId,
                     isActive: true,
                 },
             });
@@ -136,7 +137,7 @@ export async function POST(req: NextRequest) {
 
                 const newDefaultSchedule = await prisma.schedule.create({
                     data: {
-                        userId: user.userId,
+                        userId: userId,
                         name: "默认课表",
                         firstWeekStart: monday,
                         isActive: true,
@@ -146,12 +147,12 @@ export async function POST(req: NextRequest) {
 
                 // 检查用户是否有时间表，如果没有则创建默认时间表
                 const existingTimeTable = await prisma.timeTable.findFirst({
-                    where: { userId: user.userId }
+                    where: { userId: userId }
                 });
                 if (!existingTimeTable) {
                     await prisma.timeTable.create({
                         data: {
-                            userId: user.userId,
+                            userId: userId,
                             name: '默认时间表',
                             sameDuration: true,
                             isDefault: true,

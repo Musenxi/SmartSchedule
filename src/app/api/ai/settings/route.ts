@@ -1,9 +1,10 @@
-'use server';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthUser } from '@/lib/auth';
+import { auth } from '@/auth';
 import crypto from 'crypto';
+
+// Force rebuild
+
 
 // Encryption helpers (simple AES-256-GCM)
 const ALGORITHM = 'aes-256-gcm';
@@ -48,13 +49,14 @@ function maskApiKey(key: string, provider?: string | null): string {
 // GET: 获取 AI 配置
 export async function GET(request: NextRequest) {
     try {
-        const user = getAuthUser(request);
-        if (!user) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+        const userId = session.user.id;
 
         const userData = await prisma.user.findUnique({
-            where: { id: user.userId },
+            where: { id: userId },
             select: {
                 aiProvider: true,
                 aiApiKey: true,
@@ -67,12 +69,35 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
+        // Check for Global Key
+        let usingGlobalKey = false;
+        let globalKeyLimit = 5; // Default
+
+        if (!userData.aiApiKey) {
+            const globalKeySetting = await prisma.systemSetting.findUnique({
+                where: { key: 'gemini_api_key' }
+            });
+            if (globalKeySetting?.value) {
+                usingGlobalKey = true;
+
+                // Fetch limit if using global key
+                const limitSetting = await prisma.systemSetting.findUnique({
+                    where: { key: 'gemini_api_limit' }
+                });
+                if (limitSetting?.value) {
+                    globalKeyLimit = parseInt(limitSetting.value, 10);
+                }
+            }
+        }
+
         // Return masked API key for display
         return NextResponse.json({
             provider: userData.aiProvider,
             enabled: userData.aiEnabled,
             apiKey: userData.aiApiKey ? maskApiKey(decrypt(userData.aiApiKey), userData.aiProvider) : null,
             hasApiKey: !!userData.aiApiKey,
+            usingGlobalKey,
+            limit: globalKeyLimit,
             model: userData.aiModel,
         });
     } catch (error) {
@@ -84,10 +109,11 @@ export async function GET(request: NextRequest) {
 // PUT: 更新 AI 配置
 export async function PUT(request: NextRequest) {
     try {
-        const user = getAuthUser(request);
-        if (!user) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+        const userId = session.user.id;
 
         const body = await request.json();
         const { provider, apiKey, enabled, model } = body;
@@ -118,13 +144,13 @@ export async function PUT(request: NextRequest) {
         }
 
         await prisma.user.update({
-            where: { id: user.userId },
+            where: { id: userId },
             data: updateData,
         });
 
         // Fetch updated config
         const updated = await prisma.user.findUnique({
-            where: { id: user.userId },
+            where: { id: userId },
             select: {
                 aiProvider: true,
                 aiApiKey: true,
@@ -147,13 +173,14 @@ export async function PUT(request: NextRequest) {
 // DELETE: 删除 AI 配置
 export async function DELETE(request: NextRequest) {
     try {
-        const user = getAuthUser(request);
-        if (!user) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+        const userId = session.user.id;
 
         await prisma.user.update({
-            where: { id: user.userId },
+            where: { id: userId },
             data: {
                 aiProvider: null,
                 aiApiKey: null,

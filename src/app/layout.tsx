@@ -4,6 +4,7 @@ import './globals.css';
 import Providers from '@/components/providers';
 import { ThemeEffect } from '@/components/theme-effect';
 import { ThemeScript } from '@/components/theme-script';
+import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -24,6 +25,7 @@ export default function RootLayout({
         <Providers>
           <ThemeEffect />
           {children}
+          <Toaster richColors position="top-center" />
         </Providers>
       </body>
     </html>

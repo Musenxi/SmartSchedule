@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthUser } from '@/lib/auth';
+import { auth } from '@/auth';
 import { z } from 'zod';
 
 const updateTimeTableSchema = z.object({
@@ -26,10 +26,11 @@ export async function PUT(
     { params }: RouteParams
 ) {
     try {
-        const auth = getAuthUser(request);
-        if (!auth) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: '未登录' }, { status: 401 });
         }
+        const userId = session.user.id;
 
         const { id } = await params;
 
@@ -38,7 +39,7 @@ export async function PUT(
             where: { id }
         });
 
-        if (!existing || existing.userId !== auth.userId) {
+        if (!existing || existing.userId !== userId) {
             return NextResponse.json({ error: 'TimeTable not found' }, { status: 404 });
         }
 
@@ -95,10 +96,11 @@ export async function DELETE(
     { params }: RouteParams
 ) {
     try {
-        const auth = getAuthUser(request);
-        if (!auth) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: '未登录' }, { status: 401 });
         }
+        const userId = session.user.id;
 
         const { id } = await params;
 
@@ -106,7 +108,7 @@ export async function DELETE(
             where: { id }
         });
 
-        if (!timeTable || timeTable.userId !== auth.userId) {
+        if (!timeTable || timeTable.userId !== userId) {
             return NextResponse.json({ error: 'TimeTable not found' }, { status: 404 });
         }
 
@@ -117,7 +119,7 @@ export async function DELETE(
         // 检查是否有课表正在使用此时间表
         const schedulesUsingIt = await prisma.schedule.count({
             where: {
-                userId: auth.userId,
+                userId: userId,
                 activeTimeTableId: id
             }
         });

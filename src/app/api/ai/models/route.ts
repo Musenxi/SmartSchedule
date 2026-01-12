@@ -1,6 +1,5 @@
-
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthUser } from '@/lib/auth';
+import { auth } from "@/auth";
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 
@@ -26,21 +25,36 @@ function decrypt(encrypted: string): string {
 
 export async function POST(request: NextRequest) {
     try {
-        const user = getAuthUser(request);
+        const session = await auth();
         const body = await request.json();
         const { apiKey: providedKey, useSavedKey } = body;
 
         let apiKey = providedKey;
 
         // If useSavedKey flag is set, fetch and decrypt from database
-        if (useSavedKey && !providedKey && user) {
+        if (useSavedKey && !providedKey && session?.user?.id) {
             const userData = await prisma.user.findUnique({
-                where: { id: user.userId },
+                where: { id: session.user.id },
                 select: { aiApiKey: true },
             });
 
             if (userData?.aiApiKey) {
-                apiKey = decrypt(userData.aiApiKey);
+                try {
+                    const decrypted = decrypt(userData.aiApiKey);
+                    if (!decrypted.startsWith('Failed')) {
+                        apiKey = decrypted;
+                    }
+                } catch (e) { }
+            }
+        }
+
+        // Fallback to Global Key
+        if (!apiKey) {
+            const globalKeySetting = await prisma.systemSetting.findUnique({
+                where: { key: 'gemini_api_key' }
+            });
+            if (globalKeySetting?.value) {
+                apiKey = globalKeySetting.value;
             }
         }
 

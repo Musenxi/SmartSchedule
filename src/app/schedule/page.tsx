@@ -559,7 +559,20 @@ export default function SchedulePage() {
 
       if (!res.ok) throw new Error('Update failed');
 
-      await fetchSchedule(true, id); // Refresh data with correct schedule ID
+      const updatedSchedule = await res.json();
+
+      // Immediate state update
+      setAllSchedules(prev => prev.map(s => s.id === id ? { ...s, ...updatedSchedule } : s));
+      setSchedule(prev => {
+        if (!prev || prev.id !== id) return prev;
+        return {
+          ...prev,
+          ...updatedSchedule
+        };
+      });
+
+      // Background refresh to ensure consistency (optional but good for safety)
+      fetchSchedule(true, id).catch(console.error);
     } catch (error) {
       console.error('Failed to update schedule:', error);
       throw error; // Re-throw for modal to handle

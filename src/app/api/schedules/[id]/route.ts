@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-import { getAuthUser } from '@/lib/auth';
+import { auth } from '@/auth';
 
 const updateScheduleSchema = z.object({
     name: z.string().min(1).max(50).optional(),
@@ -23,10 +23,10 @@ interface RouteParams {
 // GET /api/schedules/[id] - 获取单个课表
 export async function GET(
     request: NextRequest,
-    { params }: RouteParams
+    params: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { id } = await params;
+        const { id } = await params.params;
 
         const schedule = await prisma.schedule.findUnique({
             where: { id },
@@ -57,15 +57,16 @@ export async function GET(
 // PUT /api/schedules/[id] - 更新课表
 export async function PUT(
     request: NextRequest,
-    { params }: RouteParams
+    params: { params: Promise<{ id: string }> }
 ) {
     try {
-        const user = getAuthUser(request);
-        if (!user) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+        const userId = session.user.id;
 
-        const { id } = await params;
+        const { id } = await params.params;
         const body = await request.json();
         const validated = updateScheduleSchema.parse(body);
 
@@ -74,7 +75,7 @@ export async function PUT(
             where: { id },
         });
 
-        if (!existingSchedule || existingSchedule.userId !== user.userId) {
+        if (!existingSchedule || existingSchedule.userId !== userId) {
             return NextResponse.json({ error: 'Schedule not found or unauthorized' }, { status: 404 });
         }
 
@@ -82,7 +83,7 @@ export async function PUT(
         if (validated.isActive) {
             await prisma.schedule.updateMany({
                 where: {
-                    userId: user.userId,
+                    userId: userId,
                     id: { not: id }
                 },
                 data: { isActive: false }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { X, Plus, Trash2, Check, Pencil, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface ScheduleSummary {
     id: string;
@@ -32,6 +33,8 @@ export function ScheduleListModal({
     const router = useRouter();
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [switchingId, setSwitchingId] = useState<string | null>(null);
+    const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     // Filter valid schedules if necessary, but assume props are clean
     const sortedSchedules = [...schedules].sort((a, b) => {
@@ -52,17 +55,23 @@ export function ScheduleListModal({
         }
     };
 
-    const handleDelete = async (e: React.MouseEvent, id: string) => {
+    const handleDeleteClick = (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
-        if (!confirm('确定要删除这个课表吗？删除后无法恢复。')) return;
+        setDeleteTargetId(id);
+        setShowDeleteConfirm(true);
+    };
 
-        setDeletingId(id);
+    const handleConfirmDelete = async () => {
+        if (!deleteTargetId) return;
+
+        setDeletingId(deleteTargetId);
         try {
-            await onDelete(id);
+            await onDelete(deleteTargetId);
         } catch (error) {
             console.error('Failed to delete schedule', error);
         } finally {
             setDeletingId(null);
+            setDeleteTargetId(null);
         }
     };
 
@@ -135,7 +144,7 @@ export function ScheduleListModal({
                                 {/* Delete Button (Only if not active) */}
                                 {!schedule.isActive && (
                                     <button
-                                        onClick={(e) => handleDelete(e, schedule.id)}
+                                        onClick={(e) => handleDeleteClick(e, schedule.id)}
                                         className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100 mobile:opacity-100"
                                         title="删除"
                                     >
@@ -169,6 +178,16 @@ export function ScheduleListModal({
                     <span>添加新课表</span>
                 </button>
             </div>
+
+            <ConfirmDialog
+                open={showDeleteConfirm}
+                onOpenChange={setShowDeleteConfirm}
+                title="删除课表"
+                description="确定要删除这个课表吗？此操作无法撤销，所有相关课程都将被永久删除。"
+                confirmText="删除"
+                variant="destructive"
+                onConfirm={handleConfirmDelete}
+            />
         </Modal>
     );
 }

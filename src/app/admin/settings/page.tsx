@@ -208,6 +208,67 @@ export default function AdminSettingsPage() {
 
                         <div className="border-t border-gray-100 dark:border-gray-800 my-4" />
 
+                        {/* AI Settings */}
+                        <div className="space-y-4">
+                            <h4 className="font-medium flex items-center gap-2">
+                                <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                                AI 服务配置 (Gemini)
+                            </h4>
+
+                            <div className="bg-muted/30 rounded-xl p-4 space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">全局 Gemini API Key</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="password"
+                                            className="flex-1 px-4 py-2 bg-background border border-input rounded-xl focus:ring-2 focus:ring-primary/20 outline-none"
+                                            value={settings['gemini_api_key'] || ''}
+                                            onChange={(e) => setSettings(prev => ({ ...prev, 'gemini_api_key': e.target.value }))}
+                                            placeholder="AIzaSy..."
+                                        />
+                                        <button
+                                            onClick={() => handleSave('gemini_api_key', settings['gemini_api_key'] || '')}
+                                            disabled={saving}
+                                            className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                                        >
+                                            保存
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        为未配置个人 Key 的用户提供默认服务。
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2 pt-2 border-t border-border/50">
+                                    <label className="text-sm font-medium">每日免费额度限制</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="number"
+                                            className="flex-1 px-4 py-2 bg-background border border-input rounded-xl focus:ring-2 focus:ring-primary/20 outline-none"
+                                            value={settings['gemini_api_limit'] || '5'}
+                                            onChange={(e) => setSettings(prev => ({ ...prev, 'gemini_api_limit': e.target.value }))}
+                                            placeholder="5"
+                                            min="1"
+                                        />
+                                        <button
+                                            onClick={() => handleSave('gemini_api_limit', settings['gemini_api_limit'] || '5')}
+                                            disabled={saving}
+                                            className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                                        >
+                                            保存
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        每个用户每 24 小时可使用全局 Key 的最大次数（默认 5 次）。
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-gray-100 dark:border-gray-800 my-4" />
+
                         {/* Turnstile Settings */}
                         <div className="space-y-4">
                             <h4 className="font-medium flex items-center gap-2">

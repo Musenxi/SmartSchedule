@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthUser } from '@/lib/auth';
+import { auth } from '@/auth';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -14,13 +14,13 @@ const updateConfigSchema = z.object({
 
 export async function GET(request: NextRequest) {
     try {
-        const auth = getAuthUser(request);
-        if (!auth) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const user = await prisma.user.findUnique({
-            where: { id: auth.userId },
+            where: { id: session.user.id },
             select: {
                 winterStartDate: true,
                 winterEndDate: true,
@@ -42,26 +42,27 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
     try {
-        const auth = getAuthUser(request);
-        if (!auth) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+        const userId = session.user.id;
 
         const body = await request.json();
         const data = updateConfigSchema.parse(body);
 
         // Verify IDs if provided
         if (data.winterTimeTableId) {
-            const exists = await prisma.timeTable.count({ where: { id: data.winterTimeTableId, userId: auth.userId } });
+            const exists = await prisma.timeTable.count({ where: { id: data.winterTimeTableId, userId: userId } });
             if (!exists) return NextResponse.json({ error: 'Invalid Winter TimeTable ID' }, { status: 400 });
         }
         if (data.summerTimeTableId) {
-            const exists = await prisma.timeTable.count({ where: { id: data.summerTimeTableId, userId: auth.userId } });
+            const exists = await prisma.timeTable.count({ where: { id: data.summerTimeTableId, userId: userId } });
             if (!exists) return NextResponse.json({ error: 'Invalid Summer TimeTable ID' }, { status: 400 });
         }
 
         const updated = await prisma.user.update({
-            where: { id: auth.userId },
+            where: { id: userId },
             data: {
                 winterStartDate: data.winterStartDate,
                 winterEndDate: data.winterEndDate,

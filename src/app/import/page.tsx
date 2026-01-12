@@ -94,10 +94,10 @@ function ImportPageContent() {
 
     // Fetch AI config on mount
     useEffect(() => {
-        fetch('/api/ai/config')
+        fetch('/api/ai/settings')
             .then(res => res.ok ? res.json() : null)
             .then(data => {
-                if (data && data.enabled && data.hasApiKey) {
+                if (data && data.enabled && (data.hasApiKey || data.usingGlobalKey)) {
                     setAiEnabled(true);
                 }
             })
@@ -620,10 +620,10 @@ function ImportPageContent() {
                 onSaved={() => {
                     setShowAISettings(false);
                     // Re-check AI status
-                    fetch('/api/ai/config')
+                    fetch('/api/ai/settings')
                         .then(res => res.ok ? res.json() : null)
                         .then(data => {
-                            if (data?.enabled && data?.hasApiKey) {
+                            if (data?.enabled && (data?.hasApiKey || data?.usingGlobalKey)) {
                                 setAiEnabled(true);
                             }
                         });

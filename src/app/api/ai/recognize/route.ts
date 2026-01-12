@@ -1,7 +1,7 @@
 'use server';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth';
+import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { GoogleGenAI } from '@google/genai';
 import crypto from 'crypto';
@@ -28,14 +28,15 @@ function decrypt(encrypted: string): string {
 
 export async function POST(request: NextRequest) {
     try {
-        const user = getAuthUser(request);
-        if (!user) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+        const userId = session.user.id;
 
         // Check if user has AI enabled
         const userData = await prisma.user.findUnique({
-            where: { id: user.userId },
+            where: { id: userId },
             select: {
                 aiEnabled: true,
                 aiApiKey: true,
@@ -44,11 +45,97 @@ export async function POST(request: NextRequest) {
             },
         });
 
-        if (!userData || !userData.aiEnabled || !userData.aiApiKey) {
+        // Check if user has AI enabled (or if we should allow default)
+        // Relaxing the check: if user hasn't explicitly disabled it (if we had a disabled flag), 
+        // but here aiEnabled defaults to false. 
+        // We will allow if aiEnabled is true OR if we have a global key (effectively auto-enabling for basic usage if global key is present)
+        // But for now, let's keep aiEnabled check if consistent with UI, OR just check if they have access.
+
+        // Let's refine the check:
+        // We need 'userData' to exist.
+        if (!userData) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+
+        // Key Resolution Strategy
+        let apiKey = '';
+        let useGlobalKey = false;
+
+        // 1. Try User Key
+        if (userData.aiApiKey) {
+            try {
+                const decryptedKey = decrypt(userData.aiApiKey).trim();
+                // Basic validation
+                if (decryptedKey.length >= 30 && !decryptedKey.startsWith('Failed')) {
+                    apiKey = decryptedKey;
+                }
+            } catch (e) {
+                console.warn('User API key decryption/validation failed, falling back to global...');
+            }
+        }
+
+        // 2. Try Global Key if no valid user key
+        if (!apiKey) {
+            const globalKeySetting = await prisma.systemSetting.findUnique({
+                where: { key: 'gemini_api_key' }
+            });
+
+            if (globalKeySetting?.value) {
+                apiKey = globalKeySetting.value;
+                useGlobalKey = true;
+            }
+        }
+
+        if (!apiKey) {
             return NextResponse.json(
-                { error: '请先在设置中启用并配置 AI 助手' },
+                { error: '未配置 AI API Key。请在设置中配置个人 Key 或联系管理员。' },
                 { status: 403 }
             );
+        }
+
+        // 3. Rate Limiting for Global Key
+        if (useGlobalKey) {
+            const today = new Date().toISOString().split('T')[0];
+
+            // Fetch configured limit (default: 5)
+            const limitSetting = await prisma.systemSetting.findUnique({
+                where: { key: 'gemini_api_limit' }
+            });
+            const maxDailyUsage = parseInt(limitSetting?.value || '5', 10);
+
+            const usage = await prisma.apiUsage.findUnique({
+                where: {
+                    userId_date: {
+                        userId: userId,
+                        date: today
+                    }
+                }
+            });
+
+            if ((usage?.count || 0) >= maxDailyUsage) {
+                return NextResponse.json(
+                    { error: `今日免费 AI 使用次数已耗尽（${maxDailyUsage}次/天）。请在设置中配置您自己的 Gemini API Key 以解锁无限使用。` },
+                    { status: 429 }
+                );
+            }
+
+            // Increment usage count
+            await prisma.apiUsage.upsert({
+                where: {
+                    userId_date: {
+                        userId: userId,
+                        date: today
+                    }
+                },
+                update: {
+                    count: { increment: 1 }
+                },
+                create: {
+                    userId: userId,
+                    date: today,
+                    count: 1
+                }
+            });
         }
 
         // Get form data
@@ -70,29 +157,6 @@ export async function POST(request: NextRequest) {
         } else {
             return NextResponse.json(
                 { error: '不支持的文件格式，请上传 PDF 或图片' },
-                { status: 400 }
-            );
-        }
-
-        // Decrypt and validate API key
-        let apiKey: string;
-        try {
-            const decryptedKey = decrypt(userData.aiApiKey).trim();
-            console.log('Decrypted API key length:', decryptedKey.length);
-
-            if (decryptedKey.length < 30 || decryptedKey.length > 50) {
-                throw new Error('API key length invalid');
-            }
-
-            if (decryptedKey.startsWith('Failed') || decryptedKey.startsWith('Error')) {
-                throw new Error('API key appears to be an error message');
-            }
-
-            apiKey = decryptedKey;
-        } catch (error: any) {
-            console.error('API key validation failed:', error.message);
-            return NextResponse.json(
-                { error: 'API 密钥无效或已损坏。请在设置中重新配置 Gemini API Key' },
                 { status: 400 }
             );
         }

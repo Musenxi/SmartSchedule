@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthUser } from '@/lib/auth';
+import { auth } from '@/auth';
 import { z } from 'zod';
 
 // Disable Next.js route caching
@@ -18,11 +18,11 @@ const createScheduleSchema = z.object({
 // GET /api/schedules - 获取所有课表
 export async function GET(request: NextRequest) {
     try {
-        const auth = getAuthUser(request);
-        if (!auth) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: '未登录' }, { status: 401 });
         }
-        const userId = auth.userId;
+        const userId = session.user.id;
 
         const schedules = await prisma.schedule.findMany({
             where: { userId },
@@ -47,11 +47,11 @@ export async function GET(request: NextRequest) {
 // POST /api/schedules - 创建新课表
 export async function POST(request: NextRequest) {
     try {
-        const auth = getAuthUser(request);
-        if (!auth) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: '未登录' }, { status: 401 });
         }
-        const userId = auth.userId;
+        const userId = session.user.id;
 
         const body = await request.json();
         const validated = createScheduleSchema.parse(body);
