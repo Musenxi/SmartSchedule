@@ -50,11 +50,11 @@ async function createWidget() {
     // --- Data Prep ---
     const { scheduleName, week, day, date, todayCourses = [], tomorrowCourses = [] } = data;
 
-    // Format Date: "2026-01-12" -> "1.12"
-    const dateObj = new Date(date.replace(/-/g, '/'));
-    const dateStr = \`\${dateObj.getMonth() + 1}月\${dateObj.getDate()}日 \`;
+    // Format Date using local time
+    const dateObj = new Date(); // Use local time instead of server date
+    const dateStr = (dateObj.getMonth() + 1) + "月" + dateObj.getDate() + "日 ";
     const weekDays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-    const dayStr = weekDays[day === 7 ? 0 : day];
+    const dayStr = weekDays[dateObj.getDay()]; // Use local day instead of server day
 
     // Time Calc
     const now = new Date();
@@ -116,7 +116,7 @@ async function createWidget() {
     weekStack.cornerRadius = 4;
     weekStack.setPadding(2, 6, 2, 6);
 
-    const weekT = weekStack.addText(\`第 \${week} 周\`);
+    const weekT = weekStack.addText("第 " + week + " 周");
     weekT.font = Font.systemFont(11);
     weekT.textColor = accentRed;
 
@@ -149,15 +149,14 @@ async function createWidget() {
 
         txt.addSpacer(2);
 
-        const t2 = txt.addText(\`\${course.startTime} - \${course.endTime}\`);
+        const t2 = txt.addText(course.startTime + " - " + course.endTime);
         t2.font = Font.mediumSystemFont(13);
         t2.textColor = textWhite;
 
         txt.addSpacer(2);
 
-        // Location - assuming we can fetch it or just use placeholder logic if not in data yet
-        // data usually has location? Let's assume course.location or generic
-        const locStr = course.location ? \`@\${course.location}\` : "";
+        // Location
+        const locStr = course.location ? "@" + course.location : "";
         if (locStr) {
             const t3 = txt.addText(locStr);
             t3.font = Font.systemFont(12);
@@ -226,20 +225,33 @@ async function createWidget() {
 
     const drawEmptyView = () => {
         list.addSpacer();
-        const stack = list.addStack();
+
+        const hStack = list.addStack();
+        hStack.layoutHorizontally(); // Enforce horizontal layout
+        hStack.addSpacer(); // Left push
+
+        const stack = hStack.addStack();
         stack.layoutVertically();
         stack.centerAlignContent(); // Align children horizontally center
 
-        const emoji = stack.addText("🎉");
+        const emojiStack = stack.addStack();
+        emojiStack.layoutHorizontally();
+        emojiStack.addSpacer();
+        const emoji = emojiStack.addText("🎉");
         emoji.font = Font.systemFont(30);
-        emoji.centerAlignText();
+        emojiStack.addSpacer();
 
         stack.addSpacer(8);
 
-        const t = stack.addText("今日课程已结束，明天也没有课");
+        const textStack = stack.addStack();
+        textStack.layoutHorizontally();
+        textStack.addSpacer();
+        const t = textStack.addText("今日课程已结束，明天也没有课");
         t.font = Font.systemFont(15);
         t.textColor = textGray;
-        t.centerAlignText();
+        textStack.addSpacer();
+
+        hStack.addSpacer(); // Right push
 
         list.addSpacer();
     };
@@ -267,7 +279,19 @@ async function fetchData() {
         console.log("Please set API_URL");
         return null;
     }
-    const req = new Request(API_URL);
+    
+    // Get device local date and format as YYYY-MM-DD
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const localDate = \`\${year}-\${month}-\${day}\`;
+    
+    // Add date parameter to URL
+    const separator = API_URL.includes('?') ? '&' : '?';
+    const urlWithDate = API_URL + separator + 'date=' + encodeURIComponent(localDate);
+    
+    const req = new Request(urlWithDate);
     const json = await req.loadJSON();
     // Cache it
     fm.writeString(cachePath, JSON.stringify(json));

@@ -10,6 +10,9 @@ const courseTimeSchema = z.object({
     weekRange: z.string(),
     teacher: z.string().optional(),
     location: z.string().optional(),
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
+    specificDate: z.string().optional(),
 });
 
 const createCourseSchema = z.object({
@@ -64,7 +67,27 @@ export async function POST(request: NextRequest) {
                 credits: validated.credits,
                 note: validated.note,
                 times: {
-                    create: validated.times
+                    create: validated.times.map((t) => {
+                        // Only create valid Date for specificDate if it's a valid date string
+                        let specificDateValue = null;
+                        if (t.specificDate && typeof t.specificDate === 'string' && t.specificDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                            const d = new Date(t.specificDate + 'T00:00:00');
+                            if (!isNaN(d.getTime())) {
+                                specificDateValue = d;
+                            }
+                        }
+                        return {
+                            dayOfWeek: t.dayOfWeek,
+                            startPeriod: t.startPeriod,
+                            endPeriod: t.endPeriod,
+                            weekRange: t.weekRange,
+                            teacher: t.teacher,
+                            location: t.location,
+                            startTime: t.startTime,
+                            endTime: t.endTime,
+                            specificDate: specificDateValue,
+                        };
+                    })
                 }
             },
             include: { times: true }

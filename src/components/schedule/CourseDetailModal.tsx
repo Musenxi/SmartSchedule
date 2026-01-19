@@ -290,9 +290,17 @@ ${base64Data}
                                     </div>
                                     <div className="flex-1 py-1 border-b border-border/50">
                                         <div className="text-base text-foreground">
-                                            周{['', '一', '二', '三', '四', '五', '六', '日'][time.dayOfWeek]} 第{time.startPeriod}-{time.endPeriod}节
-                                            {periods && (
-                                                <span className="ml-2 font-medium text-muted-foreground">{getTimeRange(time.startPeriod, time.endPeriod)}</span>
+                                            {time.startTime && time.endTime ? (
+                                                <>
+                                                    周{['', '一', '二', '三', '四', '五', '六', '日'][time.dayOfWeek]} {time.startTime} - {time.endTime}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    周{['', '一', '二', '三', '四', '五', '六', '日'][time.dayOfWeek]} 第{time.startPeriod}-{time.endPeriod}节
+                                                    {periods && (
+                                                        <span className="ml-2 font-medium text-muted-foreground">{getTimeRange(time.startPeriod, time.endPeriod)}</span>
+                                                    )}
+                                                </>
                                             )}
                                         </div>
                                         <div className="text-xs text-muted-foreground mt-0.5">

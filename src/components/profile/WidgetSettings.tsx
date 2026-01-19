@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { Loader2, RefreshCw, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { WIDGET_SCRIPT_TEMPLATE } from '@/lib/widget-script';
+
 export function WidgetSettings() {
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -52,17 +54,7 @@ export function WidgetSettings() {
     if (loading) return <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" /></div>;
 
     return (
-        <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-6 animate-in fade-in">
-            <div>
-                <h2 className="text-xl font-semibold flex items-center gap-2">
-                    <div className="w-1 h-6 bg-purple-500 rounded-full"></div>
-                    桌面小组件设置
-                </h2>
-                <p className="text-sm text-muted-foreground mt-2">
-                    配合 iOS Scriptable App 使用，在桌面显示课程表。
-                </p>
-            </div>
-
+        <div className="space-y-6 animate-in fade-in">
             <div className="space-y-4">
                 <div className="p-4 bg-muted/30 rounded-xl space-y-3">
                     <div className="flex items-center justify-between">
@@ -96,29 +88,40 @@ export function WidgetSettings() {
 
                 {token && (
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">API 链接 (复制到脚本中)</label>
-                        <div className="relative font-mono text-xs bg-muted/50 border p-3 rounded-lg break-all text-muted-foreground">
-                            {apiUrl}
+                        <label className="text-sm font-medium">脚本代码 (点击复制)</label>
+                        <div className="relative font-mono text-xs bg-muted/50 border p-3 rounded-lg overflow-hidden">
+                            <div className="max-h-[150px] overflow-y-auto break-all whitespace-pre-wrap text-muted-foreground">
+                                {WIDGET_SCRIPT_TEMPLATE.replace('__API_URL__', apiUrl)}
+                            </div>
                             <button
-                                onClick={() => copyToClipboard(apiUrl)}
-                                className="absolute right-2 top-2 p-1.5 hover:bg-white rounded-md transition-colors shadow-sm"
+                                onClick={() => copyToClipboard(WIDGET_SCRIPT_TEMPLATE.replace('__API_URL__', apiUrl))}
+                                className="absolute right-2 top-2 p-1.5 bg-background shadow-sm hover:bg-muted rounded-md transition-colors border"
                             >
                                 <Copy className="w-3 h-3" />
                             </button>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            请保护好此链接，不要泄露给他人。
+                            复制上方所有代码，在 Scriptable 中新建脚本并粘贴。
                         </p>
                     </div>
                 )}
+
+                <div className="pt-2">
+                    <button
+                        onClick={() => window.location.href = 'scriptable:///'}
+                        className="flex items-center justify-center gap-2 w-full py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors font-medium text-sm shadow-sm"
+                    >
+                        打开 Scriptable
+                    </button>
+                </div>
 
                 <div className="pt-4 border-t border-border/50">
                     <h3 className="text-sm font-medium mb-2">使用教程</h3>
                     <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
                         <li>下载 <a href="https://apps.apple.com/app/scriptable/id1405459188" target="_blank" className="text-primary hover:underline">Scriptable App</a></li>
-                        <li>复制提供的脚本代码 (见使用文档)</li>
-                        <li>在脚本配置中填入上方的 API 链接</li>
-                        <li>添加 iOS 小组件并选择该脚本</li>
+                        <li>复制上方的脚本代码</li>
+                        <li>在 Scriptable 中新建脚本，粘贴并保存</li>
+                        <li>在桌面添加 iOS 小组件并选择该脚本</li>
                     </ol>
                 </div>
             </div>

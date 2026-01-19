@@ -70,8 +70,11 @@ export function AddCourseModal({
                     startPeriod: t.startPeriod,
                     endPeriod: t.endPeriod,
                     weekRange: t.weekRange,
-                    ...(t.teacher ? { teacher: t.teacher } : {}),
-                    ...(t.location ? { location: t.location } : {}),
+                    teacher: t.teacher || undefined,
+                    location: t.location || undefined,
+                    startTime: t.startTime || undefined,
+                    endTime: t.endTime || undefined,
+                    specificDate: t.specificDate || undefined,
                 })),
             };
             // console.log('Submitting course data:', payload);

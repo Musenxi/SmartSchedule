@@ -70,6 +70,10 @@ export function WeekView({
     const [selection, setSelection] = useState<Selection | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const dragStartPeriod = useRef<number | null>(null);
+    // Long press detection for mobile
+    const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const touchMoved = useRef(false);
+    const pendingSelection = useRef<{ day: number; period: number; element: HTMLElement } | null>(null);
     // 计算当前周的日期
     const weekDates = useMemo(() =>
         getWeekDates(firstWeekStart, currentWeek),
@@ -304,7 +308,7 @@ export function WeekView({
         resizeHandle.current = null;
     }, []);
 
-    // Touch event handlers for mobile
+    // Touch event handlers for mobile - with long press detection
     const handleGridTouchStart = useCallback((e: React.TouchEvent, day: number, gridElement: HTMLElement) => {
         // Ignore if touching a course card
         if ((e.target as HTMLElement).closest('[data-course-card]')) return;
@@ -316,24 +320,20 @@ export function WeekView({
         const touch = e.touches[0];
         const period = getPeriodFromY(touch.clientY, gridElement);
 
+        // Clear any existing timer
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+        touchMoved.current = false;
+
         if (selection && !isOverlay) {
             setSelection(null);
             return;
         }
 
-        // Init drag
-        if (!isOverlay) {
-            // New selection checks
-            const dayCourses = coursesByDay[day] || [];
-            const hasOverlap = dayCourses.some(({ time }) =>
-                period >= time.startPeriod && period <= time.endPeriod
-            );
-            if (hasOverlap) return;
-
-            setSelection({ day, startPeriod: period, endPeriod: period });
-            dragStartPeriod.current = period;
-            resizeHandle.current = null;
-        } else if (selection) {
+        // For overlay interactions (resize handles), respond immediately
+        if (isOverlay && selection) {
             if (isHandle === 'top') {
                 resizeHandle.current = 'top';
                 dragStartPeriod.current = selection.endPeriod;
@@ -343,15 +343,51 @@ export function WeekView({
             } else {
                 resizeHandle.current = null;
                 dragStartPeriod.current = period;
-                // setSelection({ day, startPeriod: period, endPeriod: period }); // Removed
             }
+            setIsDragging(true);
+            dragDidMove.current = false;
+            return;
         }
 
-        setIsDragging(true);
-        dragDidMove.current = false;
+        // For new selection, use long press (300ms delay)
+        const dayCourses = coursesByDay[day] || [];
+        const hasOverlap = dayCourses.some(({ time }) =>
+            period >= time.startPeriod && period <= time.endPeriod
+        );
+        if (hasOverlap) return;
+
+        // Store pending selection
+        pendingSelection.current = { day, period, element: gridElement };
+
+        // Start long press timer
+        longPressTimer.current = setTimeout(() => {
+            if (!touchMoved.current && pendingSelection.current) {
+                const { day: d, period: p } = pendingSelection.current;
+                setSelection({ day: d, startPeriod: p, endPeriod: p });
+                dragStartPeriod.current = p;
+                resizeHandle.current = null;
+                setIsDragging(true);
+                dragDidMove.current = false;
+                // Haptic feedback
+                if (navigator.vibrate) {
+                    navigator.vibrate(15);
+                }
+            }
+            longPressTimer.current = null;
+        }, 300);
     }, [getPeriodFromY, selection, coursesByDay]);
 
     const handleGridTouchMove = useCallback((e: React.TouchEvent, day: number, gridElement: HTMLElement) => {
+        // Mark that touch has moved (cancels long press if not yet triggered)
+        touchMoved.current = true;
+
+        // Cancel long press timer if still pending
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+            pendingSelection.current = null;
+        }
+
         if (!isDragging || !selection || selection.day !== day) return;
 
         const touch = e.touches[0];
@@ -383,6 +419,13 @@ export function WeekView({
     }, [isDragging, selection, getPeriodFromY]);
 
     const handleGridTouchEnd = useCallback(() => {
+        // Clear long press timer
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+        pendingSelection.current = null;
+        touchMoved.current = false;
         setIsDragging(false);
         resizeHandle.current = null;
     }, []);
@@ -473,7 +516,7 @@ export function WeekView({
                         {visibleDays.map((day) => (
                             <div
                                 key={day}
-                                className="flex-1 relative border-r border-dashed border-muted-foreground/20 min-w-0 cursor-pointer touch-none"
+                                className="flex-1 relative border-r border-dashed border-muted-foreground/20 min-w-0 cursor-pointer"
                                 style={{ minHeight: gridHeight }}
                                 onMouseDown={(e) => handleGridMouseDown(e, day, e.currentTarget)}
                                 onMouseMove={(e) => handleGridMouseMove(e, day, e.currentTarget)}
@@ -523,6 +566,7 @@ export function WeekView({
                                         cornerRadius={courseCornerRadius}
                                         onClick={() => onCourseClick?.(course, time, overlapping)}
                                         overlapCount={overlapping.length > 0 ? overlapping.length + 1 : 0}
+                                        periods={periods}
                                     />
                                 ))}
 

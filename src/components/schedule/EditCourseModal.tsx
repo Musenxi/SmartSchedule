@@ -55,6 +55,7 @@ export function EditCourseModal({ isOpen, onClose, course, totalWeeks = 20, onSa
                         location: t.location || null,
                         startTime: t.startTime || null,
                         endTime: t.endTime || null,
+                        specificDate: t.specificDate || null,
                     })),
                 },
             });

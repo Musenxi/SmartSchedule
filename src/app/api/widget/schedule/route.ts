@@ -39,19 +39,49 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'No active schedule' }, { status: 404 });
         }
 
-        // Calculate Current Week
-        const now = new Date();
-        const firstWeekStart = new Date(schedule.firstWeekStart);
-        // Reset time to midnight for calculation
-        const start = new Date(firstWeekStart);
-        start.setHours(0, 0, 0, 0);
-        const today = new Date(now);
-        today.setHours(0, 0, 0, 0);
+        // Use client date if provided, otherwise use server date in Asia/Shanghai
+        const clientDate = searchParams.get('date'); // Format: YYYY-MM-DD
+        let today: Date;
+        let currentDay: number;
 
+        if (clientDate && /^\d{4}-\d{2}-\d{2}$/.test(clientDate)) {
+            // Use client-provided date
+            const [year, month, day] = clientDate.split('-').map(Number);
+            today = new Date(year, month - 1, day);
+            today.setHours(0, 0, 0, 0);
+            const dayIndex = today.getDay();
+            currentDay = (dayIndex === 0 ? 7 : dayIndex);
+        } else {
+            // Fallback: Calculate based on Asia/Shanghai
+            const now = new Date();
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Shanghai',
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric',
+                weekday: 'short',
+                hour12: false
+            });
+
+            const parts = formatter.formatToParts(now);
+            const getPart = (type: string) => parts.find(p => p.type === type)?.value;
+
+            const year = parseInt(getPart('year')!);
+            const month = parseInt(getPart('month')!) - 1; // 0-indexed
+            const dayOfMonth = parseInt(getPart('day')!);
+            today = new Date(year, month, dayOfMonth);
+            today.setHours(0, 0, 0, 0);
+
+            const dayIndex = today.getDay();
+            currentDay = (dayIndex === 0 ? 7 : dayIndex);
+        }
+
+        // Calculate current week based on today
+        const start = new Date(schedule.firstWeekStart);
+        start.setHours(0, 0, 0, 0);
         const diffTime = today.getTime() - start.getTime();
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
         const currentWeek = Math.floor(diffDays / 7) + 1;
-        const currentDay = (today.getDay() === 0 ? 7 : today.getDay()); // 1-7 (Mon-Sun)
 
         // Get Time Periods
         let periods: any[] = userAny.timeTables[0]?.periods || [];
@@ -138,14 +168,28 @@ export async function GET(request: NextRequest) {
 
             for (const exam of exams) {
                 if (!exam.startTime) continue;
-                const dt = new Date(exam.startTime);
-                const timeStr = dt.toTimeString().slice(0, 5);
+
+                // Helper to format time in Asia/Shanghai timezone
+                const formatTimeInCN = (date: Date) => {
+                    const formatter = new Intl.DateTimeFormat('en-US', {
+                        timeZone: 'Asia/Shanghai',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                    const parts = formatter.formatToParts(date);
+                    const hour = parts.find(p => p.type === 'hour')?.value || '00';
+                    const minute = parts.find(p => p.type === 'minute')?.value || '00';
+                    return `${hour}:${minute}`;
+                };
+
+                const timeStr = formatTimeInCN(new Date(exam.startTime));
                 let endTimeStr = "00:00";
                 if (exam.dueDate) {
-                    endTimeStr = new Date(exam.dueDate).toTimeString().slice(0, 5);
+                    endTimeStr = formatTimeInCN(new Date(exam.dueDate));
                 } else {
-                    const endDt = new Date(dt.getTime() + 2 * 60 * 60 * 1000); // Default 2h
-                    endTimeStr = endDt.toTimeString().slice(0, 5);
+                    const endDt = new Date(new Date(exam.startTime).getTime() + 2 * 60 * 60 * 1000);
+                    endTimeStr = formatTimeInCN(endDt);
                 }
 
                 dayCourses.push({
@@ -171,7 +215,6 @@ export async function GET(request: NextRequest) {
         const tomorrow = new Date(today);
         tomorrow.setDate(today.getDate() + 1);
         let tomorrowWeek = currentWeek;
-        // If today is Sunday (7), tomorrow is Monday (1) of next week
         if (currentDay === 7) {
             tomorrowWeek = currentWeek + 1;
         }
@@ -183,7 +226,7 @@ export async function GET(request: NextRequest) {
             scheduleName: schedule.name,
             week: currentWeek,
             day: currentDay,
-            date: now.toISOString().split('T')[0], // YYYY-MM-DD
+            date: today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0'),
             todayCourses,
             tomorrowCourses
         });

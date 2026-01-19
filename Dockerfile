@@ -32,6 +32,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+ENV JWT_SECRET="dummy-jwt-secret-for-build"
+ENV API_KEY_ENCRYPTION_SECRET="dummy-api-enc-secret-for-build"
 RUN npx prisma generate
 RUN \
   if [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \

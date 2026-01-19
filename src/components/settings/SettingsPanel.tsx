@@ -156,22 +156,6 @@ export function SettingsPanel({
                         </div>
                     </div>
 
-                    {/* iOS Widget Setup */}
-                    <div
-                        className="flex items-center justify-between p-3 bg-muted/30 rounded-xl cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => {
-                            setIsWidgetSetupOpen(true);
-                        }}
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-lg text-blue-600 dark:text-blue-400">
-                                <LayoutTemplate className="w-5 h-5" />
-                            </div>
-                            <div className="font-medium">iOS 桌面小组件</div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                    </div>
-
 
                     <div
                         className="flex items-center justify-between p-4 bg-muted/30 rounded-xl cursor-pointer hover:bg-muted/50 transition-colors"

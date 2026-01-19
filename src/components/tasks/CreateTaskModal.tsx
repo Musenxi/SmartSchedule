@@ -46,17 +46,8 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, courseId, initialDa
 
     const [showValidationDialog, setShowValidationDialog] = useState(false);
 
-    // 自动设置结束时间为开始时间后1小时
     const setStartTime = (time: string) => {
         setStartTimeRaw(time);
-        // 计算1小时后的时间
-        const [h, m] = time.split(':').map(Number);
-        const newHour = h + 1;
-        if (newHour >= 24) {
-            setEndTime('23:59'); // 如果超过24点，设为23:59
-        } else {
-            setEndTime(`${String(newHour).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
-        }
     };
 
     const [loading, setLoading] = useState(false);

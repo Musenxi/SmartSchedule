@@ -10,6 +10,9 @@ const courseTimeSchema = z.object({
     weekRange: z.string(),
     teacher: z.string().optional().nullable(),
     location: z.string().optional().nullable(),
+    startTime: z.string().optional().nullable(),
+    endTime: z.string().optional().nullable(),
+    specificDate: z.string().optional().nullable(),
 });
 
 const updateCourseSchema = z.object({
@@ -81,14 +84,27 @@ export async function PUT(
                 credits: validated.credits,
                 note: validated.note,
                 times: validated.times ? {
-                    create: validated.times.map(t => ({
-                        dayOfWeek: t.dayOfWeek,
-                        startPeriod: t.startPeriod,
-                        endPeriod: t.endPeriod,
-                        weekRange: t.weekRange,
-                        teacher: t.teacher,
-                        location: t.location,
-                    }))
+                    create: validated.times.map(t => {
+                        // Only create valid Date for specificDate if it's a valid date string
+                        let specificDateValue = null;
+                        if (t.specificDate && typeof t.specificDate === 'string' && t.specificDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                            const d = new Date(t.specificDate + 'T00:00:00');
+                            if (!isNaN(d.getTime())) {
+                                specificDateValue = d;
+                            }
+                        }
+                        return {
+                            dayOfWeek: t.dayOfWeek,
+                            startPeriod: t.startPeriod,
+                            endPeriod: t.endPeriod,
+                            weekRange: t.weekRange,
+                            teacher: t.teacher,
+                            location: t.location,
+                            startTime: t.startTime,
+                            endTime: t.endTime,
+                            specificDate: specificDateValue,
+                        };
+                    })
                 } : undefined,
             },
             include: { times: true }

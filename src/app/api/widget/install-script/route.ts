@@ -20,7 +20,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Generate API URL
-    const origin = request.nextUrl.origin;
+    // Prefer NEXTAUTH_URL from env if available (handles proxy/docker correct public URL)
+    let origin = process.env.NEXTAUTH_URL;
+    if (!origin) {
+        origin = request.nextUrl.origin;
+    }
     const apiUrl = `${origin}/api/widget/schedule?token=${token}`;
 
     // Inject API URL into script
@@ -28,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     return new NextResponse(script, {
         headers: {
-            'Content-Type': 'text/javascript',
+            'Content-Type': 'text/javascript; charset=utf-8',
         },
     });
 }
