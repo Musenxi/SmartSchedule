@@ -61,6 +61,8 @@ RUN chown nextjs:nodejs .next
 
 # Copy prisma directory for migrations/db push
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+# Copy prisma.config.ts for Prisma 7 configuration
+COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
