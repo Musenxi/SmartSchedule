@@ -37,7 +37,7 @@ export default function ProfilePage() {
         fetch('/api/auth/config')
             .then(res => res.json())
             .then(data => {
-                if (data.emailVerification) {
+                if (data.emailEnabled) {
                     setEmailVerificationEnabled(true);
                 }
             })

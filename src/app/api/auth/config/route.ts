@@ -24,13 +24,13 @@ export async function GET() {
                 enabled: config['turnstile_enabled'] === 'true',
                 siteKey: config['turnstile_site_key'] || ''
             },
-            emailVerification: emailEnabled
+            emailEnabled: emailEnabled
         });
     } catch (error) {
         console.error('Failed to fetch auth config:', error);
         return NextResponse.json({
             turnstile: { enabled: false, siteKey: '' },
-            emailVerification: false
+            emailEnabled: false
         });
     }
 }
