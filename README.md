@@ -94,12 +94,13 @@
 
 4. **初始化数据库**
    ```bash
-   npx prisma migrate dev
+   npx prisma migrate deploy
    ```
 
-5. **启动开发服务器**
+5. **构建并启动**
    ```bash
-   npm run dev
+   npm run build
+   npm start
    ```
 
 访问 `http://localhost:3000` 即可开始使用。
@@ -121,6 +122,12 @@ docker run -d -p 3000:3000 \
   -e JWT_SECRET="your-jwt-secret" \
   -e API_KEY_ENCRYPTION_SECRET="your-encryption-secret" \
   musenxi/smartschedule:v1.0.0
+```
+
+**首次部署需初始化数据库：**
+
+```bash
+docker exec smartschedule npx prisma migrate deploy
 ```
 
 ### 方式二：使用 Docker Compose（推荐用于生产）
@@ -168,6 +175,12 @@ volumes:
 docker-compose up -d
 ```
 
+**首次部署需初始化数据库：**
+
+```bash
+docker-compose exec app npx prisma migrate deploy
+```
+
 ### 方式三：自行构建镜像
 
 如需自定义或从源码构建：
@@ -189,6 +202,12 @@ docker run -d -p 3000:3000 \
   -e JWT_SECRET="your-jwt-secret" \
   -e API_KEY_ENCRYPTION_SECRET="your-encryption-secret" \
   smartschedule:custom
+```
+
+**首次部署需初始化数据库：**
+
+```bash
+docker exec smartschedule npx prisma migrate deploy
 ```
 
 ### 环境变量说明
