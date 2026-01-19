@@ -1,62 +1,72 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { WidgetCard } from './WidgetCard';
+
+const variants = ['dual', 'single', 'tomorrow', 'empty'] as const;
+type Variant = typeof variants[number];
 
 export function WidgetPreview() {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [isTransitioning, setIsTransitioning] = useState(false);
+
+    // Auto-rotate every 4 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setIsTransitioning(true);
+            setTimeout(() => {
+                setCurrentIndex((prev) => (prev + 1) % variants.length);
+                setIsTransitioning(false);
+            }, 300);
+        }, 4000);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleDotClick = (index: number) => {
+        if (index !== currentIndex) {
+            setIsTransitioning(true);
+            setTimeout(() => {
+                setCurrentIndex(index);
+                setIsTransitioning(false);
+            }, 300);
+        }
+    };
+
     return (
-        <div className="relative group cursor-default select-none">
-            {/* Widget Container */}
-            <div className="w-[338px] h-[158px] bg-black rounded-[22px] overflow-hidden shadow-2xl transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-1 border border-white/10 p-4 flex flex-col">
-                {/* Header */}
-                <div className="flex items-center h-[20px] mb-[20px]">
-                    <span className="text-[13px] font-bold text-white">1月12日 </span>
-                    <span className="text-[13px] font-bold text-[#ef4444] ml-1">周一</span>
-                    <span className="text-[13px] text-[#cccccc] truncate max-w-[80px] ml-2">我的课表</span>
-                    <div className="flex-grow"></div>
-                    <div className="bg-[#ef4444]/10 rounded-[4px] px-[6px] py-[2px]">
-                        <span className="text-[11px] text-[#ef4444] leading-none">第 3 周</span>
-                    </div>
-                </div>
-
-                {/* Content: Dual View Mock */}
-                <div className="flex flex-row items-center flex-1">
-                    {/* Left Column */}
-                    <div className="flex flex-col w-[126px] h-full justify-start">
-                        <span className="text-[11px] text-white/60 mb-[4px]">当前</span>
-                        <div className="flex flex-row items-center">
-                            <div className="w-[4px] h-[40px] bg-[#facc15] rounded-[2px] shrink-0"></div>
-                            <div className="ml-2.5 flex flex-col">
-                                <span className="text-[14px] font-bold text-white leading-tight truncate w-[90px]">高等数学A</span>
-                                <span className="text-[11px] font-medium text-white/90 mt-0.5 truncate w-[90px]">08:00-09:35</span>
-                                <span className="text-[10px] text-[#cccccc] mt-0.5 truncate w-[90px]">@A-101</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="w-[12px]"></div>
-
-                    {/* Separator */}
-                    <div className="w-[0.5px] h-[70px] bg-white/15"></div>
-
-                    <div className="w-[12px]"></div>
-
-                    {/* Right Column */}
-                    <div className="flex flex-col w-[138px] h-full justify-start">
-                        <span className="text-[11px] text-white/60 mb-[4px]">接下来</span>
-                        <div className="flex flex-row items-center">
-                            <div className="w-[4px] h-[40px] bg-[#3b82f6] rounded-[2px] shrink-0"></div>
-                            <div className="ml-2.5 flex flex-col">
-                                <span className="text-[14px] font-bold text-white leading-tight truncate w-[100px]">大学英语</span>
-                                <span className="text-[11px] font-medium text-white/90 mt-0.5 truncate w-[100px]">09:55-11:30</span>
-                                <span className="text-[10px] text-[#cccccc] mt-0.5 truncate w-[100px]">@B-205</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <div className="flex flex-col items-center gap-6">
+            {/* Widget Display */}
+            <div
+                className="transition-opacity duration-300"
+                style={{ opacity: isTransitioning ? 0 : 1 }}
+            >
+                <WidgetCard variant={variants[currentIndex]} />
             </div>
 
-            {/* Glossy Overlay */}
-            <div className="absolute inset-0 rounded-[22px] bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
+            {/* Indicators */}
+            <div className="flex gap-2">
+                {variants.map((_, index) => (
+                    <button
+                        key={index}
+                        onClick={() => handleDotClick(index)}
+                        className={`w-2 h-2 rounded-full transition-all duration-300 ${index === currentIndex
+                                ? 'bg-primary w-6'
+                                : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                            }`}
+                        aria-label={`切换到样式 ${index + 1}`}
+                    />
+                ))}
+            </div>
+
+            {/* Labels */}
+            <div className="text-center">
+                <p className="text-sm text-muted-foreground">
+                    {currentIndex === 0 && '双视图 - 当前课程 + 接下来'}
+                    {currentIndex === 1 && '单视图 - 接下来课程'}
+                    {currentIndex === 2 && '明天视图'}
+                    {currentIndex === 3 && '空闲状态'}
+                </p>
+            </div>
         </div>
     );
 }

@@ -1,8 +1,9 @@
 {
-    "name": "智慧课程表",
-    "short_name": "智慧课程表",
+    "name": "智能课程表",
+    "short_name": "智能课程表",
     "description": "AI-Powered Smart Schedule Application",
-    "start_url": "/",
+    "start_url": "/schedule",
+    "id": "/schedule",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#ffffff",
