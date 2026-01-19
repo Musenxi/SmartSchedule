@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendVerificationCode, isSMTPConfigured } from '@/lib/mail';
+import { sendVerificationCode, sendPasswordResetCode, isSMTPConfigured } from '@/lib/mail';
 import { z } from 'zod';
 import { auth } from '@/auth';
 
@@ -56,12 +56,6 @@ export async function POST(request: NextRequest) {
         const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
         // 3. Store or Update Token in DB
-        // Using upsert or verify existence. VerificationToken has compound ID [identifier, token]
-        // But typical model uses unique identifier for single token or allows multiple.
-        // Prisma schema: @@id([identifier, token])
-        // This allows multiple tokens per email. We might want to clean up old ones or just add new one.
-        // For simplicity and to avoid clutter, let's delete old ones for this email first.
-
         await prisma.verificationToken.deleteMany({
             where: { identifier: email }
         });
@@ -74,8 +68,12 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        // 4. Send Email
-        await sendVerificationCode(email, code);
+        // 4. Send Email based on type
+        if (type === 'reset') {
+            await sendPasswordResetCode(email, code);
+        } else {
+            await sendVerificationCode(email, code);
+        }
 
         return NextResponse.json({ success: true, message: '验证码已发送' });
 

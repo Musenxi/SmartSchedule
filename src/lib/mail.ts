@@ -85,3 +85,22 @@ export async function isSMTPConfigured(): Promise<boolean> {
 
     return !!(config.smtp_host && config.smtp_user && config.smtp_password);
 }
+
+export async function sendPasswordResetCode(email: string, code: string) {
+    const subject = '【SmartSchedule】密码重置验证码';
+    const html = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">重置您的密码</h2>
+            <p>您好，</p>
+            <p>我们收到了您的密码重置请求。您的验证码是：</p>
+            <p style="font-size: 24px; font-weight: bold; color: #3B82F6; letter-spacing: 2px;">${code}</p>
+            <p>该验证码将在 10 分钟后失效。</p>
+            <p style="color: #666;">如果您没有请求重置密码，请忽略此邮件，您的账户是安全的。</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+            <p style="color: #666; font-size: 12px;">此邮件由系统自动发送，请勿回复。</p>
+        </div>
+    `;
+
+    await sendEmail({ to: email, subject, html });
+}
+

@@ -16,6 +16,7 @@ function LoginContent() {
   const [turnstileToken, setTurnstileToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailEnabled, setEmailEnabled] = useState(false);
 
   useEffect(() => {
     // Check system initialization status
@@ -27,6 +28,14 @@ function LoginContent() {
         }
       })
       .catch(console.error);
+
+    // Check auth config (for forgot password link)
+    fetch('/api/auth/config')
+      .then(res => res.json())
+      .then(data => {
+        setEmailEnabled(data.emailEnabled === true);
+      })
+      .catch(() => { });
 
     // Check for auth errors
     const errorParam = searchParams.get('error');
@@ -126,9 +135,16 @@ function LoginContent() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
-              密码
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-foreground">
+                密码
+              </label>
+              {emailEnabled && (
+                <a href="/forgot-password" className="text-sm text-primary hover:underline">
+                  忘记密码?
+                </a>
+              )}
+            </div>
             <PasswordInput
               id="password"
               value={password}

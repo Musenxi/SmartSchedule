@@ -116,7 +116,7 @@ export default async function Home() {
             <FeatureCard
               icon={<Smartphone className="h-10 w-10 text-cyan-500" />}
               title="PWA 原生体验"
-              description="支持 PWA 应用，您可以将“智慧课程表”安装到手机或电脑桌面，享受如原生 App 般的流畅操作。"
+              description="支持 PWA 应用，您可以将课程表安装到手机或电脑桌面，享受如原生 App 般的流畅操作。"
             />
             <FeatureCard
               icon={<Shield className="h-10 w-10 text-green-500" />}

@@ -6,7 +6,7 @@ import { Settings, Save, Loader2, Globe, ShieldCheck, Mail } from 'lucide-react'
 export default function AdminSettingsPage() {
     const [settings, setSettings] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const [savingKey, setSavingKey] = useState<string | null>(null);
     const [testing, setTesting] = useState(false);
 
     const handleTestEmail = async (to: string) => {
@@ -50,7 +50,7 @@ export default function AdminSettingsPage() {
 
     const handleSave = async (key: string, value: string) => {
         if (value === '********') return;
-        setSaving(true);
+        setSavingKey(key);
         try {
             const res = await fetch('/api/admin/system-settings', {
                 method: 'POST',
@@ -67,7 +67,7 @@ export default function AdminSettingsPage() {
             console.error(e);
             import('sonner').then(({ toast }) => toast.error('保存出错'));
         } finally {
-            setSaving(false);
+            setSavingKey(null);
         }
     };
 
@@ -108,10 +108,10 @@ export default function AdminSettingsPage() {
                                     />
                                     <button
                                         onClick={() => handleSave('admin_domain', settings['admin_domain'] || '')}
-                                        disabled={saving}
+                                        disabled={savingKey === 'admin_domain'}
                                         className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                                     >
-                                        保存
+                                        {savingKey === 'admin_domain' ? '...' : '保存'}
                                     </button>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
@@ -145,10 +145,10 @@ export default function AdminSettingsPage() {
                                     />
                                     <button
                                         onClick={() => handleSave('site_title', settings['site_title'] || '')}
-                                        disabled={saving}
+                                        disabled={savingKey === 'site_title'}
                                         className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                                     >
-                                        保存
+                                        {savingKey === 'site_title' ? '...' : '保存'}
                                     </button>
                                 </div>
                             </div>
@@ -231,10 +231,10 @@ export default function AdminSettingsPage() {
                                         />
                                         <button
                                             onClick={() => handleSave('gemini_api_key', settings['gemini_api_key'] || '')}
-                                            disabled={saving}
+                                            disabled={savingKey === 'gemini_api_key'}
                                             className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                                         >
-                                            保存
+                                            {savingKey === 'gemini_api_key' ? '...' : '保存'}
                                         </button>
                                     </div>
                                     <p className="text-xs text-muted-foreground leading-relaxed">
@@ -255,10 +255,10 @@ export default function AdminSettingsPage() {
                                         />
                                         <button
                                             onClick={() => handleSave('gemini_api_limit', settings['gemini_api_limit'] || '5')}
-                                            disabled={saving}
+                                            disabled={savingKey === 'gemini_api_limit'}
                                             className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                                         >
-                                            保存
+                                            {savingKey === 'gemini_api_limit' ? '...' : '保存'}
                                         </button>
                                     </div>
                                     <p className="text-xs text-muted-foreground">
@@ -305,10 +305,10 @@ export default function AdminSettingsPage() {
                                                 />
                                                 <button
                                                     onClick={() => handleSave('turnstile_site_key', settings['turnstile_site_key'] || '')}
-                                                    disabled={saving}
+                                                    disabled={savingKey === 'turnstile_site_key'}
                                                     className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                                                 >
-                                                    保存
+                                                    {savingKey === 'turnstile_site_key' ? '...' : '保存'}
                                                 </button>
                                             </div>
                                         </div>
@@ -325,10 +325,10 @@ export default function AdminSettingsPage() {
                                                 />
                                                 <button
                                                     onClick={() => handleSave('turnstile_secret_key', settings['turnstile_secret_key'] || '')}
-                                                    disabled={saving}
+                                                    disabled={savingKey === 'turnstile_secret_key'}
                                                     className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                                                 >
-                                                    保存
+                                                    {savingKey === 'turnstile_secret_key' ? '...' : '保存'}
                                                 </button>
                                             </div>
                                         </div>
