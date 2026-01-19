@@ -1,17 +1,75 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
+-- CreateEnum
+CREATE TYPE "Role" AS ENUM ('USER', 'ADMIN');
+
 -- CreateEnum
 CREATE TYPE "TaskType" AS ENUM ('HOMEWORK', 'EXAM', 'EVENT', 'CUSTOM');
 
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
-    "password" TEXT NOT NULL,
     "name" TEXT,
+    "email" TEXT NOT NULL,
+    "emailVerified" TIMESTAMP(3),
+    "image" TEXT,
+    "password" TEXT,
+    "githubId" TEXT,
     "avatar" TEXT,
+    "role" "Role" NOT NULL DEFAULT 'USER',
+    "defaultTimeTableId" TEXT,
+    "autoSwitchEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "winterTimeTableId" TEXT,
+    "winterStartDate" TEXT,
+    "winterEndDate" TEXT,
+    "summerTimeTableId" TEXT,
+    "aiProvider" TEXT,
+    "aiModel" TEXT,
+    "aiApiKey" TEXT,
+    "aiEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "widgetToken" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "accounts" (
+    "userId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "providerAccountId" TEXT NOT NULL,
+    "refresh_token" TEXT,
+    "access_token" TEXT,
+    "expires_at" INTEGER,
+    "token_type" TEXT,
+    "scope" TEXT,
+    "id_token" TEXT,
+    "session_state" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "accounts_pkey" PRIMARY KEY ("provider","providerAccountId")
+);
+
+-- CreateTable
+CREATE TABLE "sessions" (
+    "sessionToken" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "expires" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "verification_tokens" (
+    "identifier" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "expires" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "verification_tokens_pkey" PRIMARY KEY ("identifier","token")
 );
 
 -- CreateTable
@@ -26,6 +84,8 @@ CREATE TABLE "schedules" (
     "isActive" BOOLEAN NOT NULL DEFAULT false,
     "enableAutoTimeTableSwitch" BOOLEAN NOT NULL DEFAULT false,
     "activeTimeTableId" TEXT,
+    "shareCode" TEXT,
+    "shareCodeExpiresAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -56,6 +116,9 @@ CREATE TABLE "course_times" (
     "weekRange" TEXT NOT NULL,
     "teacher" TEXT,
     "location" TEXT,
+    "startTime" TEXT,
+    "endTime" TEXT,
+    "specificDate" TIMESTAMP(3),
 
     CONSTRAINT "course_times_pkey" PRIMARY KEY ("id")
 );
@@ -63,11 +126,10 @@ CREATE TABLE "course_times" (
 -- CreateTable
 CREATE TABLE "time_tables" (
     "id" TEXT NOT NULL,
-    "scheduleId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "sameDuration" BOOLEAN NOT NULL DEFAULT true,
-    "startDate" TIMESTAMP(3),
-    "endDate" TIMESTAMP(3),
+    "duration" INTEGER,
     "isDefault" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -94,10 +156,12 @@ CREATE TABLE "tasks" (
     "type" "TaskType" NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
+    "startTime" TIMESTAMP(3),
     "dueDate" TIMESTAMP(3),
     "location" TEXT,
     "completed" BOOLEAN NOT NULL DEFAULT false,
     "priority" INTEGER NOT NULL DEFAULT 0,
+    "showInSchedule" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -127,11 +191,52 @@ CREATE TABLE "settings" (
     CONSTRAINT "settings_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "system_settings" (
+    "key" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+
+    CONSTRAINT "system_settings_pkey" PRIMARY KEY ("key")
+);
+
+-- CreateTable
+CREATE TABLE "api_usages" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "date" TEXT NOT NULL,
+    "count" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "api_usages_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "users_githubId_key" ON "users"("githubId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_widgetToken_key" ON "users"("widgetToken");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "sessions_sessionToken_key" ON "sessions"("sessionToken");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "schedules_shareCode_key" ON "schedules"("shareCode");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "settings_userId_key" ON "settings"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "api_usages_userId_date_key" ON "api_usages"("userId", "date");
+
+-- AddForeignKey
+ALTER TABLE "accounts" ADD CONSTRAINT "accounts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "schedules" ADD CONSTRAINT "schedules_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -143,7 +248,7 @@ ALTER TABLE "courses" ADD CONSTRAINT "courses_scheduleId_fkey" FOREIGN KEY ("sch
 ALTER TABLE "course_times" ADD CONSTRAINT "course_times_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "courses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "time_tables" ADD CONSTRAINT "time_tables_scheduleId_fkey" FOREIGN KEY ("scheduleId") REFERENCES "schedules"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "time_tables" ADD CONSTRAINT "time_tables_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "periods" ADD CONSTRAINT "periods_timeTableId_fkey" FOREIGN KEY ("timeTableId") REFERENCES "time_tables"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -156,3 +261,7 @@ ALTER TABLE "tasks" ADD CONSTRAINT "tasks_courseId_fkey" FOREIGN KEY ("courseId"
 
 -- AddForeignKey
 ALTER TABLE "settings" ADD CONSTRAINT "settings_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "api_usages" ADD CONSTRAINT "api_usages_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
